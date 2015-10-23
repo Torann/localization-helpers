@@ -23,17 +23,27 @@ class LocalizationHelpersServiceProvider extends ServiceProvider
 	 */
 	public function register()
 	{
-		$this->app['localization.missing'] = $this->app->share( function( $app ) {
-        	return new Commands\LocalizationMissing($app['config']['localization-helpers']);
+        $this->app->bind('localization.missing', function( $app ) {
+        	return new Commands\LocalizationMissing($app['config']->get('localization-helpers', []));
     	});
 
-		$this->app['localization.find'] = $this->app->share( function( $app ) {
-        	return new Commands\LocalizationFind($app['config']['localization-helpers']);
+        $this->app->bind('localization.find', function( $app ) {
+        	return new Commands\LocalizationFind($app['config']->get('localization-helpers', []));
     	});
+
+        $this->app->bind('localization.export', function ($app) {
+            return new Commands\ExportCommand($app['config']->get('localization-helpers', []));
+        });
+
+        $this->app->bind('localization.import', function ($app) {
+            return new Commands\ImportCommand($app['config']->get('localization-helpers', []));
+        });
 
     	$this->commands(
     		'localization.missing',
-    		'localization.find'
+    		'localization.find',
+            'localization.export',
+            'localization.import'
     	);
 	}
 

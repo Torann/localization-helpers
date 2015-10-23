@@ -13,42 +13,42 @@ abstract class LocalizationAbstract extends Command
     /**
      * functions and method to catch translations
      *
-     * @var  array
+     * @var array
      */
     protected $trans_methods = [];
 
     /**
      * functions and method to catch translations
      *
-     * @var  array
+     * @var string
      */
     protected $editor = '';
 
     /**
      * Folders to parse for missing translations
      *
-     * @var  array
+     * @var array
      */
     protected $folders = [];
 
     /**
      * Never make lemmas containing these keys obsolete
      *
-     * @var  array
+     * @var array
      */
     protected $never_obsolete_keys = [];
 
     /**
      * Never manage these lang files
      *
-     * @var  array
+     * @var array
      */
     protected $ignore_lang_files = [];
 
     /**
      * Should comands display something
      *
-     * @var  boolean
+     * @var bool
      */
     protected $display = true;
 
@@ -72,28 +72,29 @@ abstract class LocalizationAbstract extends Command
     /**
      * Get the lang directory path
      *
-     * @return string the path
+     * @param  string  $path
+     * @return string
      */
-    protected function getLangPath()
+    protected function getLangPath($path = null)
     {
         if (empty($this->lang_folder_path))
         {
-            $paths = [
+            $directories = [
                 app_path() . DIRECTORY_SEPARATOR . 'lang',
                 base_path() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'lang',
             ];
 
-            foreach ($paths as $path) 
+            foreach ($directories as $directory)
             {
-                if (file_exists($path)) {
-                    return $path;
+                if (file_exists($directory)) {
+                    return $directory.($path ? DIRECTORY_SEPARATOR.$path : $path);;
                 }
             }
 
             $this->error("No lang folder found in these paths:");
 
-            foreach ($paths as $path) {
-                $this->error("- " . $path);
+            foreach ($directories as $directory) {
+                $this->error("- " . $directory);
             }
 
             $this->line('');

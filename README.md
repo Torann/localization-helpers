@@ -39,9 +39,9 @@ A configuration file will be publish to `config/localization-helpers.php`.
 
 This command parses all your code and generate according lang files in all `lang/XXX/` directories.
 
-Use `php artisan help localization:missing` for more informations about options.
+Use `php artisan help localization:missing` for more information about options.
 
-#### *Examples*
+#### Examples
 
 ##### Generate all lang files
 
@@ -143,9 +143,9 @@ You can edit the editor path in your configuration file. By default, editor is *
 
 This command will search in all your code for the argument as a lemma.
 
-Use `php artisan help localization:find` for more informations about options.
+Use `php artisan help localization:find` for more information about options.
 
-#### *Examples*
+#### Examples
 
 ##### Find regular lemma
 
@@ -174,7 +174,51 @@ php artisan localization:find -s -r "/.*me$/"
 
 > PCRE functions are used
 
+### Command `localization:export`
+
+This command will create a CSV file based on the given locale and group. You have to pass the **locale** and the **group** as arguments. The group is the name of the language file without its extension. You may define options for your desired CSV format.
+
+#### Examples
+
+##### Export the navigation translation for english (en) 
+
+```
+php artisan localization:export en navigation
+```
+
+##### Optional example 
+
+```
+php artisan localization:export en navigation --path=/some/file
+php artisan localization:export en navigation --delimiter=";" --enclosure='"' --path=/some/file
+```
+
+### Command `localization:import`
+
+This command import a CSV file based on the given locale and group. You have to pass  the **locale**, the **group** and the **path to the CSV file** as arguments. The group is the name of the language file without its extension. You may define options to match the CSV format of your input file.
+
+#### Examples
+
+##### Import the navigation translation for english (en) 
+
+```
+php artisan localization:import en navigation
+```
+
+##### Optional example 
+
+```
+php artisan localization:import en navigation --path=/some/file
+php artisan localization:import en navigation --delimiter=";" --enclosure='"' --escape='\\' --path=/some/file
+```
+
+> Importing and exporting is helpful when using a third party service such as [OneSkyApp.com](http://www.oneskyapp.com) 
+
 ## Change Log
+
+### v1.3.3
+
+- Add the ability to import and export language files in CSV format
 
 ### v1.3.2
 

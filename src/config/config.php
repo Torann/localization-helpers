@@ -132,6 +132,20 @@ return [
 	|
 	*/
 
-	'editor_command_line' => '/Applications/Sublime\\ Text.app/Contents/SharedSupport/bin/subl'
+	'editor_command_line' => '/Applications/Sublime\\ Text.app/Contents/SharedSupport/bin/subl',
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Import/Export File Path
+    |--------------------------------------------------------------------------
+    |
+    | Set this to the location of the import and export CSV files.
+    |
+    */
+
+    'import_path' => storage_path('localization/import'),
+
+    'export_path' => storage_path('localization/export'),
 
 ];
