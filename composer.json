@@ -1,0 +1,35 @@
+{
+  "name": "torann/localization-helpers",
+  "description": "An artisan command package for easy translation management.",
+  "keywords": ["laravel", "translation", "helpers", "scan"],
+  "license": "BSD 2-Clause",
+  "authors": [
+    {
+      "name": "Daniel Stainback",
+      "email": "daniel@lyften.com"
+    },
+    {
+      "name"     : "Potsky",
+      "email"    : "potsky@me.com",
+      "homepage" : "http://www.potsky.com"
+    }
+  ],
+  "require": {
+    "php": ">=5.5.9",
+    "illuminate/support": "~5.1"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^4.8",
+    "mockery/mockery": "^0.9.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "Torann\\LocalizationHelpers\\": "src/Torann/LocalizationHelpers"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "0.1-dev"
+    }
+  }
+}
