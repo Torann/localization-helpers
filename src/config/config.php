@@ -103,10 +103,10 @@ return [
 	| that there are dynamic because it cannot guess them.
 	|
 	| Example :
-	|   - in PHP blade code : <span>{!! trans("message.user.dynamo.$s") !!}</span>
+	|   - in PHP blade code : <span>{!! trans("message.user.dynamic.$s") !!}</span>
 	|   - in lang/en.message.php :
 	|     - 'user' => [
-	|         'dynamo' => [
+	|         'dynamic' => [
 	|           'lastname'  => 'Family name',
 	|           'firstname' => 'Name',
 	|           'email'     => 'Email address',
