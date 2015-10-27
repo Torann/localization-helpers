@@ -72,22 +72,20 @@ abstract class LocalizationAbstract extends Command
     /**
      * Get the lang directory path
      *
-     * @param  string  $path
+     * @param  string $path
      * @return string
      */
     protected function getLangPath($path = null)
     {
-        if (empty($this->lang_folder_path))
-        {
+        if (empty($this->lang_folder_path)) {
             $directories = [
                 app_path() . DIRECTORY_SEPARATOR . 'lang',
                 base_path() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'lang',
             ];
 
-            foreach ($directories as $directory)
-            {
+            foreach ($directories as $directory) {
                 if (file_exists($directory)) {
-                    return $directory.($path ? DIRECTORY_SEPARATOR.$path : $path);;
+                    return $directory . ($path ? DIRECTORY_SEPARATOR . $path : $path);;
                 }
             }
 
@@ -231,8 +229,7 @@ abstract class LocalizationAbstract extends Command
      */
     protected function getPhpFiles($path)
     {
-        if (is_dir($path))
-        {
+        if (is_dir($path)) {
             return new RegexIterator(
                 new RecursiveIteratorIterator(
                     new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
@@ -242,7 +239,7 @@ abstract class LocalizationAbstract extends Command
                 '/^.+\.php$/i',
                 RecursiveRegexIterator::GET_MATCH
             );
-        } 
+        }
         else {
             return [];
         }
@@ -263,13 +260,16 @@ abstract class LocalizationAbstract extends Command
         $result = [];
         $string = file_get_contents($path);
 
-        foreach (array_flatten($this->trans_methods) as $method)
-        {
+        foreach (array_flatten($this->trans_methods) as $method) {
             preg_match_all($method, $string, $matches);
 
             foreach ($matches[1] as $k => $v) {
-                if (strpos($v, '$') !== false) unset($matches[1][$k]);
-                if (strpos($v, '::') !== false) unset($matches[1][$k]);
+                if (strpos($v, '$') !== false) {
+                    unset($matches[1][$k]);
+                }
+                if (strpos($v, '::') !== false) {
+                    unset($matches[1][$k]);
+                }
             }
 
             $result = array_merge($result, array_flip($matches[1]));

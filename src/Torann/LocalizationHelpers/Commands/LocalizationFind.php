@@ -34,8 +34,7 @@ class LocalizationFind extends LocalizationAbstract
         //////////////////////////////////////////////////
         // Display where translatations are searched in //
         //////////////////////////////////////////////////
-        if ($this->option('verbose'))
-        {
+        if ($this->option('verbose')) {
             $this->line("Lemmas will be searched in the following directories:");
 
             foreach ($folders as $path) {
@@ -49,31 +48,29 @@ class LocalizationFind extends LocalizationAbstract
         // Parse all lemmas from code //
         ////////////////////////////////
         $files = [];
-        foreach ($folders as $path)
-        {
-            foreach ($this->getPhpFiles($path) as $php_file_path => $dumb)
-            {
-                foreach ($this->extractTranslationFromFile($php_file_path) as $k => $v)
-                {
+        foreach ($folders as $path) {
+            foreach ($this->getPhpFiles($path) as $php_file_path => $dumb) {
+                foreach ($this->extractTranslationFromFile($php_file_path) as $k => $v) {
                     $real_value = eval("return $k;");
                     $found = false;
 
-                    if ($this->option('regex'))
-                    {
+                    if ($this->option('regex')) {
                         try {
                             $r = preg_match($lemma, $real_value);
-                        }
-                        catch (\Exception $e) {
-                            $this->line("<error>The argument is not a valid regular expression:</error>" . str_replace('preg_match():', '', $e->getMessage()));
+                        } catch (\Exception $e) {
+                            $this->line("<error>The argument is not a valid regular expression:</error>" . str_replace('preg_match():',
+                                    '', $e->getMessage()));
                             die();
                         }
 
                         if ($r === 1) {
                             $found = true;
                         }
-                        else if ($r === false) {
-                            $this->error("The argument is not a valid regular expression");
-                            die();
+                        else {
+                            if ($r === false) {
+                                $this->error("The argument is not a valid regular expression");
+                                die();
+                            }
                         }
                     }
                     else {
@@ -83,8 +80,7 @@ class LocalizationFind extends LocalizationAbstract
                     }
 
 
-                    if ($found === true)
-                    {
+                    if ($found === true) {
                         if ($this->option('short')) {
                             $php_file_path = $this->getShortPath($php_file_path);
                         }
@@ -96,8 +92,7 @@ class LocalizationFind extends LocalizationAbstract
             }
         }
 
-        if (count($files) > 0)
-        {
+        if (count($files) > 0) {
             $this->line('Lemma <info>' . $lemma . '</info> has been found in:');
 
             foreach ($files as $file) {

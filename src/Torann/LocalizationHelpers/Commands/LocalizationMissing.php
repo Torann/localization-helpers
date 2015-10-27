@@ -36,14 +36,13 @@ class LocalizationMissing extends LocalizationAbstract
         //////////////////////////////////////////////////
         // Display where translations are searched in //
         //////////////////////////////////////////////////
-        if ($this->option('verbose')) 
-        {
+        if ($this->option('verbose')) {
             $this->line("Lemmas will be searched in the following directories:");
-            
+
             foreach ($folders as $path) {
                 $this->line('    <info>' . $path . '</info>');
             }
-            
+
             $this->line('');
         }
 
@@ -51,24 +50,20 @@ class LocalizationMissing extends LocalizationAbstract
         // Parse all lemmas from code //
         ////////////////////////////////
         $lemmas = [];
-        
-        foreach ($folders as $path) 
-        {
-            foreach ($this->getPhpFiles($path) as $php_file_path => $dumb)
-            {
+
+        foreach ($folders as $path) {
+            foreach ($this->getPhpFiles($path) as $php_file_path => $dumb) {
                 $lemma = [];
-                foreach ($this->extractTranslationFromFile($php_file_path) as $k => $v)
-                {
+                foreach ($this->extractTranslationFromFile($php_file_path) as $k => $v) {
                     $real_value = eval("return $k;");
                     $lemma[$real_value] = $php_file_path;
                 }
-                
+
                 $lemmas = array_merge($lemmas, $lemma);
             }
         }
 
-        if (count($lemmas) === 0)
-        {
+        if (count($lemmas) === 0) {
             $this->comment("No lemma have been found in code.");
             $this->line("I have searched recursively in PHP files in these directories:");
 
@@ -87,10 +82,8 @@ class LocalizationMissing extends LocalizationAbstract
 
         $this->line((count($lemmas) > 1) ? count($lemmas) . " lemmas have been found in code" : "1 lemma has been found in code");
 
-        if ($this->option('verbose'))
-        {
-            foreach ($lemmas as $key => $value)
-            {
+        if ($this->option('verbose')) {
+            foreach ($lemmas as $key => $value) {
                 if (strpos($key, '.') !== false) {
                     $this->line('    <info>' . $key . '</info> in file <comment>' . $this->getShortPath($value) . '</comment>');
                 }
@@ -102,10 +95,8 @@ class LocalizationMissing extends LocalizationAbstract
         /////////////////////////////////////////////
         $lemmas_structured = [];
 
-        foreach ($lemmas as $key => $value)
-        {
-            if (strpos($key, '.') === false)
-            {
+        foreach ($lemmas as $key => $value) {
+            if (strpos($key, '.') === false) {
                 $this->line('    <error>' . $key . '</error> in file <comment>' . $this->getShortPath($value) . '</comment> <error>will not be included because it has no parent</error>');
             }
             else {
@@ -130,16 +121,11 @@ class LocalizationMissing extends LocalizationAbstract
         $there_are_new = false;
 
         $this->line('Scan files:');
-        foreach (scandir($dir_lang) as $lang)
-        {
-            if (!in_array($lang, [".", ".."]))
-            {
-                if (is_dir($dir_lang . DIRECTORY_SEPARATOR . $lang))
-                {
-                    foreach ($lemmas_structured as $family => $array)
-                    {
-                        if (in_array($family, $this->ignore_lang_files))
-                        {
+        foreach (scandir($dir_lang) as $lang) {
+            if (!in_array($lang, [".", ".."])) {
+                if (is_dir($dir_lang . DIRECTORY_SEPARATOR . $lang)) {
+                    foreach ($lemmas_structured as $family => $array) {
+                        if (in_array($family, $this->ignore_lang_files)) {
                             if ($this->option('verbose')) {
                                 $this->line('');
                                 $this->info("\t! Skip lang file '{$family}' !");
@@ -197,16 +183,14 @@ class LocalizationMissing extends LocalizationAbstract
                         //////////////////////////
                         // Deal with new lemmas //
                         //////////////////////////
-                        if (count($welcome_lemmas) > 0)
-                        {
+                        if (count($welcome_lemmas) > 0) {
                             $display_already_comment = true;
                             $something_to_do = true;
                             $there_are_new = true;
                             $this->info("\t" . count($welcome_lemmas) . " new strings to translate");
                             $final_lemmas["TRANS___NEW___TRANS"] = "TRANS___NEW___TRANS";
 
-                            foreach ($welcome_lemmas as $key => $value)
-                            {
+                            foreach ($welcome_lemmas as $key => $value) {
                                 if ($this->option('verbose')) {
                                     $this->line("\t\t<info>{$key}</info> in " . $this->getShortPath($value));
                                 }
@@ -218,7 +202,8 @@ class LocalizationMissing extends LocalizationAbstract
 
                                 array_set($final_lemmas,
                                     $key,
-                                    str_replace('%LEMMA', str_replace('&period;', '.', $key), $this->option('new-value'))
+                                    str_replace('%LEMMA', str_replace('&period;', '.', $key),
+                                        $this->option('new-value'))
                                 );
                             }
                         }
@@ -226,16 +211,14 @@ class LocalizationMissing extends LocalizationAbstract
                         ///////////////////////////////
                         // Deal with existing lemmas //
                         ///////////////////////////////
-                        if (count($already_lemmas) > 0)
-                        {
+                        if (count($already_lemmas) > 0) {
                             if ($this->option('verbose')) {
                                 $this->line("\t\t\t" . count($already_lemmas) . " already translated strings");
                             }
 
                             $final_lemmas["TRANS___OLD___TRANS"] = "TRANS___OLD___TRANS";
 
-                            foreach ($already_lemmas as $key => $value)
-                            {
+                            foreach ($already_lemmas as $key => $value) {
                                 array_set(
                                     $final_lemmas,
                                     $key,
@@ -247,13 +230,10 @@ class LocalizationMissing extends LocalizationAbstract
                         ///////////////////////////////
                         // Deal with obsolete lemmas //
                         ///////////////////////////////
-                        if (count($obsolete_lemmas) > 0)
-                        {
+                        if (count($obsolete_lemmas) > 0) {
                             // Remove all dynamic fields
-                            foreach ($obsolete_lemmas as $key => $value)
-                            {
-                                foreach ($this->never_obsolete_keys as $remove)
-                                {
+                            foreach ($obsolete_lemmas as $key => $value) {
+                                foreach ($this->never_obsolete_keys as $remove) {
                                     if (strpos($key, '.' . $remove . '.') !== false) {
                                         unset($obsolete_lemmas[$key]);
                                     }
@@ -261,8 +241,7 @@ class LocalizationMissing extends LocalizationAbstract
                             }
                         }
 
-                        if (count($obsolete_lemmas) > 0)
-                        {
+                        if (count($obsolete_lemmas) > 0) {
                             $display_already_comment = true;
                             $display_obsolete_comment = ($this->option('no-obsolete')) ? false : true;
                             $something_to_do = true;
@@ -274,8 +253,7 @@ class LocalizationMissing extends LocalizationAbstract
 
                             $final_lemmas["TRANS___OBSOLETE___TRANS"] = "TRANS___OBSOLETE___TRANS";
 
-                            foreach ($obsolete_lemmas as $key => $value)
-                            {
+                            foreach ($obsolete_lemmas as $key => $value) {
                                 if ($this->option('verbose')) {
                                     $this->line("\t\t\t<comment>{$key}</comment>");
                                 }
@@ -290,8 +268,7 @@ class LocalizationMissing extends LocalizationAbstract
                             }
                         }
 
-                        if (($something_to_do === true) || ($this->option('force')))
-                        {
+                        if (($something_to_do === true) || ($this->option('force'))) {
                             $content = var_export($final_lemmas, true);
                             $content = preg_replace("@'TRANS___COMMENT___TRANS[0-9]*' => '(.*)',@", '// $1', $content);
                             $content = str_replace(
@@ -309,10 +286,10 @@ class LocalizationMissing extends LocalizationAbstract
                             );
 
                             $file_content = "<?php\n";
-                            if (!$this->option('no-date'))
-                            {
+                            if (!$this->option('no-date')) {
                                 $a = " Generated via \"php artisan " . $this->argument('command') . "\" at " . date("Y/m/d H:i:s") . " ";
-                                $file_content .= "/" . str_repeat('*', strlen($a)) . "\n" . $a . "\n" . str_repeat('*', strlen($a)) . "/\n";
+                                $file_content .= "/" . str_repeat('*', strlen($a)) . "\n" . $a . "\n" . str_repeat('*',
+                                        strlen($a)) . "/\n";
                             }
 
                             $file_content .= "\nreturn " . $content . ";";
@@ -333,8 +310,7 @@ class LocalizationMissing extends LocalizationAbstract
         // Silent mode                           //
         // only return an exit code on new lemma //
         ///////////////////////////////////////////
-        if ($this->option('silent'))
-        {
+        if ($this->option('silent')) {
             if ($there_are_new === true) {
                 return ERROR;
             }
@@ -357,14 +333,11 @@ class LocalizationMissing extends LocalizationAbstract
                 $this->line('');
             }
 
-            if ($do === true)
-            {
-                if (!$this->option('no-backup'))
-                {
+            if ($do === true) {
+                if (!$this->option('no-backup')) {
                     $this->line('Backup files:');
 
-                    foreach ($job as $file_lang_path => $file_content)
-                    {
+                    foreach ($job as $file_lang_path => $file_content) {
                         $backup_path = preg_replace('/\..+$/', '.' . date("Ymd_His") . '.php', $file_lang_path);
 
                         if (!$this->option('dry-run')) {
@@ -379,8 +352,7 @@ class LocalizationMissing extends LocalizationAbstract
 
                 $this->line('Save files:');
                 $open_files = '';
-                foreach ($job as $file_lang_path => $file_content)
-                {
+                foreach ($job as $file_lang_path => $file_content) {
                     if (!$this->option('dry-run')) {
                         file_put_contents($file_lang_path, $file_content);
                     }
@@ -438,12 +410,23 @@ class LocalizationMissing extends LocalizationAbstract
             ['dry-run', 'r', InputOption::VALUE_NONE, 'Dry run : run process but do not write anything'],
             ['editor', 'e', InputOption::VALUE_NONE, 'Open files which need to be edited at the end of the process'],
             ['force', 'f', InputOption::VALUE_NONE, 'Force file rewrite even if there is nothing to do'],
-            ['new-value', 'l', InputOption::VALUE_OPTIONAL, 'Value of new found lemmas (use %LEMMA for the lemma value)', '%LEMMA'],
+            [
+                'new-value',
+                'l',
+                InputOption::VALUE_OPTIONAL,
+                'Value of new found lemmas (use %LEMMA for the lemma value)',
+                '%LEMMA'
+            ],
             ['no-backup', 'b', InputOption::VALUE_NONE, 'Do not backup lang file (be careful, I am not a good coder)'],
             ['no-comment', 'c', InputOption::VALUE_NONE, 'Do not add comments in lang files for lemma definition'],
             ['no-date', 'd', InputOption::VALUE_NONE, 'Do not add the date of execution in the lang files'],
             ['no-obsolete', 'o', InputOption::VALUE_NONE, 'Do not write obsolete lemma'],
-            ['silent', 's', InputOption::VALUE_NONE, 'Use this option to only return the exit code (use $? in shell to know whether there are missing lemma)'],
+            [
+                'silent',
+                's',
+                InputOption::VALUE_NONE,
+                'Use this option to only return the exit code (use $? in shell to know whether there are missing lemma)'
+            ],
         ];
     }
 

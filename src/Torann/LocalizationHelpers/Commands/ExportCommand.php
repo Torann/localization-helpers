@@ -7,19 +7,19 @@ use Symfony\Component\Console\Input\InputArgument;
 
 class ExportCommand extends LocalizationAbstract
 {
-	/**
-	 * The console command name.
-	 *
-	 * @var string
-	 */
-	protected $name = 'localization:export';
+    /**
+     * The console command name.
+     *
+     * @var string
+     */
+    protected $name = 'localization:export';
 
-	/**
-	 * The console command description.
-	 *
-	 * @var string
-	 */
-	protected $description = "Exports the language files to CSV files";
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = "Exports the language files to CSV files";
 
     /**
      * Export path.
@@ -47,16 +47,16 @@ class ExportCommand extends LocalizationAbstract
      */
     public function fire()
     {
-		$locale = $this->argument('locale');
-		$group  = $this->argument('group');
+        $locale = $this->argument('locale');
+        $group = $this->argument('group');
 
-		$delimiter = $this->option('delimiter');
-		$enclosure = $this->option('enclosure');
+        $delimiter = $this->option('delimiter');
+        $enclosure = $this->option('enclosure');
 
-		$strings = $this->loadLangList($locale, $group);
+        $strings = $this->loadLangList($locale, $group);
 
-		// Create path device and write CSV.
-		$path = $this->option('path');
+        // Create path device and write CSV.
+        $path = $this->option('path');
 
         // Create storage dir
         if (file_exists($path) == false) {
@@ -64,23 +64,23 @@ class ExportCommand extends LocalizationAbstract
         }
 
         // Can't write to file
-		if (!($out = fopen("{$path}/{$group}.csv", 'w'))) {
+        if (!($out = fopen("{$path}/{$group}.csv", 'w'))) {
             $this->error('Can\'t open the input file!');
             exit;
-		}
+        }
 
-		// Write CSV file
-		foreach ($strings as $key => $value) {
-			fputcsv($out, array($key, $value), $delimiter, $enclosure);
-		}
+        // Write CSV file
+        foreach ($strings as $key => $value) {
+            fputcsv($out, [$key, $value], $delimiter, $enclosure);
+        }
 
-		fclose($out);
+        fclose($out);
 
         $this->line('');
         $this->info("Successfully created export file:");
         $this->info("{$path}/{$group}.csv");
         $this->line('');
-	}
+    }
 
     /*
      * Get list of languages
@@ -104,7 +104,11 @@ class ExportCommand extends LocalizationAbstract
     {
         return [
             ['locale', InputArgument::REQUIRED, 'The locale to be exported.'],
-            ['group', InputArgument::REQUIRED, 'The group (which is the name of the language file without the extension)'],
+            [
+                'group',
+                InputArgument::REQUIRED,
+                'The group (which is the name of the language file without the extension)'
+            ],
         ];
     }
 
@@ -116,8 +120,20 @@ class ExportCommand extends LocalizationAbstract
     protected function getOptions()
     {
         return [
-            ['delimiter', 'd', InputOption::VALUE_OPTIONAL, 'The optional delimiter parameter sets the field delimiter (one character only).', ','],
-            ['enclosure', 'c', InputOption::VALUE_OPTIONAL, 'The optional enclosure parameter sets the field enclosure (one character only).', '"'],
+            [
+                'delimiter',
+                'd',
+                InputOption::VALUE_OPTIONAL,
+                'The optional delimiter parameter sets the field delimiter (one character only).',
+                ','
+            ],
+            [
+                'enclosure',
+                'c',
+                InputOption::VALUE_OPTIONAL,
+                'The optional enclosure parameter sets the field enclosure (one character only).',
+                '"'
+            ],
             ['path', 'p', InputOption::VALUE_OPTIONAL, 'Save the output to this path', $this->export_path],
         ];
     }
