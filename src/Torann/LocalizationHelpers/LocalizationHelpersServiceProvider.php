@@ -45,6 +45,11 @@ class LocalizationHelpersServiceProvider extends ServiceProvider
             'localization.export',
             'localization.import'
         );
+
+        // Merge config
+        $this->mergeConfigFrom(
+            __DIR__.'/../../config/config.php', 'localization-helpers'
+        );
     }
 
     /**
