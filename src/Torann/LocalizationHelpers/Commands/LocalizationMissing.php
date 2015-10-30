@@ -233,8 +233,13 @@ class LocalizationMissing extends LocalizationAbstract
                         if (count($obsolete_lemmas) > 0) {
                             // Remove all dynamic fields
                             foreach ($obsolete_lemmas as $key => $value) {
-                                foreach ($this->never_obsolete_keys as $remove) {
-                                    if (strpos($key, '.' . $remove . '.') !== false) {
+                                foreach ($this->never_obsolete_keys as $remove)
+                                {
+                                    $remove = "{$remove}.";
+
+                                    if (substr($key, 0, strlen($remove)) === $remove
+                                        || strpos($key, ".{$remove}") !== false
+                                    ) {
                                         unset($obsolete_lemmas[$key]);
                                     }
                                 }
