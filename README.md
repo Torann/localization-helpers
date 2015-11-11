@@ -13,4 +13,4 @@ Documentation for the framework can be found on [Lyften.com](http://lyften.com/p
 
 ### License
 
-Skosh is open-sourced software licensed under the BSD 2-Clause License.
+Localization Helpers is open-sourced software licensed under the BSD 2-Clause License.
