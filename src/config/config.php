@@ -42,7 +42,8 @@ return [
     | Lang folder
     |--------------------------------------------------------------------------
     |
-    | You can overwrite where is located your lang folder
+    | You can overwrite where your lang folder is located
+    |
     | If null or missing, Localization::Missing will search :
     | - first in app_path() . DIRECTORY_SEPARATOR . 'lang',
     | - then  in base_path() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'lang',
@@ -99,6 +100,7 @@ return [
     |
     | Localization::Missing will search lemmas in existing lang files.
     | Then it searches in all PHP source files.
+    |
     | When using dynamic or auto-generated lemmas, you must tell Localization::Missing
     | that there are dynamic because it cannot guess them.
     |
