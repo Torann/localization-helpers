@@ -180,14 +180,17 @@ class LocalizationMissing extends LocalizationAbstract
 
                         $a = include($file_lang_path);
                         $old_lemmas = (is_array($a)) ? array_dot($a) : [];
+
                         $new_lemmas = array_dot($array);
                         $final_lemmas = [];
                         $display_already_comment = false;
                         $something_to_do = false;
                         $i = 0;
+
                         $obsolete_lemmas = array_diff_key($old_lemmas, $new_lemmas);
                         $welcome_lemmas = array_diff_key($new_lemmas, $old_lemmas);
                         $already_lemmas = array_intersect_key($old_lemmas, $new_lemmas);
+
                         ksort($obsolete_lemmas);
                         ksort($welcome_lemmas);
                         ksort($already_lemmas);
@@ -265,6 +268,13 @@ class LocalizationMissing extends LocalizationAbstract
                                     if (substr($key, 0, strlen($remove)) === $remove
                                         || strpos($key, ".{$remove}") !== false
                                     ) {
+
+                                        array_set($final_lemmas,
+                                            $key,
+                                            str_replace('%LEMMA', str_replace('&period;', '.', $value),
+                                                $this->option('new-value'))
+                                        );
+
                                         unset($obsolete_lemmas[$key]);
                                     }
                                 }
@@ -317,17 +327,8 @@ class LocalizationMissing extends LocalizationAbstract
                                 $content
                             );
 
-                            $file_content = "<?php\n";
-                            if (!$this->option('no-date'))
-                            {
-                                $a = " Generated via \"php artisan " . $this->argument('command') . "\" at " . date("Y/m/d H:i:s") . " ";
-                                $file_content .= "/" . str_repeat('*', strlen($a)) . "\n" . $a . "\n" . str_repeat('*',
-                                        strlen($a)) . "/\n";
-                            }
-
-                            $file_content .= "\nreturn " . $content . ";";
-
-                            $job[$file_lang_path] = $file_content;
+                            // Set file content
+                            $job[$file_lang_path] = "<?php\n\nreturn " . $content . ";";
                         }
                         else {
                             if ($this->option('verbose')) {
@@ -456,7 +457,6 @@ class LocalizationMissing extends LocalizationAbstract
             ],
             ['no-backup', 'b', InputOption::VALUE_NONE, 'Do not backup lang file (be careful, I am not a good coder)'],
             ['no-comment', 'c', InputOption::VALUE_NONE, 'Do not add comments in lang files for lemma definition'],
-            ['no-date', 'd', InputOption::VALUE_NONE, 'Do not add the date of execution in the lang files'],
             ['no-obsolete', 'o', InputOption::VALUE_NONE, 'Do not write obsolete lemma'],
             [
                 'silent',
