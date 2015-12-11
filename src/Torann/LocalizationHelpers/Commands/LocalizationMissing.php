@@ -210,8 +210,8 @@ class LocalizationMissing extends LocalizationAbstract
                             {
                                 $value = $key;
 
-                                // Clean up never obsolete key values
-                                if (in_array(substr($key, 0, strpos($key, '.')), $this->never_obsolete_keys)) {
+                                // Clean up the key value
+                                if (substr($key, 0, strpos($key, '.'))) {
                                     $value = substr($key, strpos($key, '.') + 1);
                                 }
 
