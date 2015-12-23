@@ -114,70 +114,76 @@ abstract class LocalizationAbstract extends Command
     /**
      * Display console message
      *
-     * @param   string $s the message to display
+     * @param  string  $string
+     * @param  string  $style
+     * @param  null|int|string  $verbosity
      *
      * @return  void
      */
-    public function line($s)
+    public function line($string, $style = null, $verbosity = null)
     {
         if ($this->display) {
-            parent::line($s);
+            parent::line($string, $style, $verbosity);
         }
     }
 
     /**
      * Display console message
      *
-     * @param   string $s the message to display
+     * @param  string  $string
+     * @param  null|int|string  $verbosity
      *
      * @return  void
      */
-    public function info($s)
+    public function info($string, $verbosity = null)
     {
         if ($this->display) {
-            parent::info($s);
+            parent::info($string, $verbosity);
         }
     }
 
     /**
      * Display console message
      *
-     * @param   string $s the message to display
+     * @param  string  $string
+     * @param  null|int|string  $verbosity
      *
      * @return  void
      */
-    public function comment($s)
+    public function comment($string, $verbosity = null)
     {
         if ($this->display) {
-            parent::comment($s);
+            parent::comment($string, $verbosity);
         }
     }
 
     /**
      * Display console message
      *
-     * @param   string $s the message to display
+     * @param  string  $string
+     * @param  null|int|string  $verbosity
      *
      * @return  void
      */
-    public function question($s)
+    public function question($string, $verbosity = null)
     {
         if ($this->display) {
-            parent::question($s);
+            parent::question($string, $verbosity);
         }
     }
 
     /**
      * Display console message
      *
-     * @param   string $s the message to display
+     * @param  string  $string
+     * @param  null|int|string  $verbosity
      *
-     * @return  void
+     * @return void
      */
-    public function error($s)
+    public function error($string, $verbosity = null)
     {
         if ($this->display) {
-            parent::error($s);
+            parent::error($string, $verbosity);
         }
     }
 
