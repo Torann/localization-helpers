@@ -9,7 +9,7 @@ Localization Helpers is a set of tools to help you manage translations in your L
 
 ## Official Documentation
 
-Documentation for the framework can be found on [Lyften.com](http://lyften.com/projects/localization-helpers/).
+Documentation for the package can be found on [Lyften.com](http://lyften.com/projects/localization-helpers/).
 
 ### License
 
