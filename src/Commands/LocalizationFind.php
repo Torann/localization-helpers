@@ -5,7 +5,7 @@ namespace Torann\LocalizationHelpers\Commands;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 
-class LocalizationFind extends LocalizationAbstract
+class LocalizationFind extends AbstractCommand
 {
     /**
      * The console command name.
@@ -29,7 +29,7 @@ class LocalizationFind extends LocalizationAbstract
     public function fire()
     {
         $lemma = $this->argument('lemma');
-        $folders = $this->getPath($this->folders);
+        $folders = $this->getPath($this->config('folders', []));
 
         //////////////////////////////////////////////////
         // Display where translatations are searched in //
@@ -57,7 +57,8 @@ class LocalizationFind extends LocalizationAbstract
                     if ($this->option('regex')) {
                         try {
                             $r = preg_match($lemma, $real_value);
-                        } catch (\Exception $e) {
+                        }
+                        catch (\Exception $e) {
                             $this->line("<error>The argument is not a valid regular expression:</error>" . str_replace('preg_match():',
                                     '', $e->getMessage()));
                             die();

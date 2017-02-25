@@ -4,7 +4,7 @@ namespace Torann\LocalizationHelpers\Commands;
 
 use Symfony\Component\Console\Input\InputOption;
 
-class LocalizationMissing extends LocalizationAbstract
+class LocalizationMissing extends AbstractCommand
 {
     /**
      * The console command name.
@@ -27,7 +27,7 @@ class LocalizationMissing extends LocalizationAbstract
      */
     public function fire()
     {
-        $folders = $this->getPath($this->folders);
+        $folders = $this->getPath($this->config('folders', []));
         $this->display = !$this->option('silent');
 
         //////////////////////////////////////////////////
@@ -51,6 +51,7 @@ class LocalizationMissing extends LocalizationAbstract
         foreach ($folders as $path) {
             foreach ($this->getPhpFiles($path) as $php_file_path => $dumb) {
                 $lemma = [];
+
                 foreach ($this->extractTranslationFromFile($php_file_path) as $k => $v) {
                     $real_value = eval("return $k;");
                     $lemma[$real_value] = $php_file_path;
@@ -64,13 +65,14 @@ class LocalizationMissing extends LocalizationAbstract
             $this->comment("No lemma have been found in code.");
             $this->line("I have searched recursively in PHP files in these directories:");
 
-            foreach ($this->getPath($this->folders) as $path) {
+            foreach ($this->config('folders', []) as $path) {
+                $path = $this->getPath($path);
                 $this->line("\t{$path}");
             }
 
             $this->line("for these functions/methods:");
 
-            foreach ($this->trans_methods as $k => $v) {
+            foreach ($this->config('trans_methods', []) as $k => $v) {
                 $this->line("\t{$k}");
             }
 
@@ -122,7 +124,7 @@ class LocalizationMissing extends LocalizationAbstract
             if (!in_array($lang, [".", ".."])) {
                 if (is_dir($dir_lang . DIRECTORY_SEPARATOR . $lang)) {
                     foreach ($lemmas_structured as $family => $array) {
-                        if (in_array($family, $this->ignore_lang_files)) {
+                        if (in_array($family, $this->config('ignore_lang_files', []))) {
                             if ($this->option('verbose')) {
                                 $this->line('');
                                 $this->info("\t! Skip lang file '{$family}' !");
@@ -136,6 +138,7 @@ class LocalizationMissing extends LocalizationAbstract
                         if ($this->option('verbose')) {
                             $this->line('');
                         }
+
                         $this->line('    ' . $this->getShortPath($file_lang_path));
 
                         if (!is_writable(dirname($file_lang_path))) {
@@ -244,7 +247,7 @@ class LocalizationMissing extends LocalizationAbstract
                         if (count($obsolete_lemmas) > 0) {
                             // Remove all dynamic fields
                             foreach ($obsolete_lemmas as $key => $value) {
-                                foreach ($this->never_obsolete_keys as $remove) {
+                                foreach ($this->config('never_obsolete_keys', []) as $remove) {
                                     $remove = "{$remove}.";
 
                                     if (substr($key, 0, strlen($remove)) === $remove
@@ -380,7 +383,7 @@ class LocalizationMissing extends LocalizationAbstract
                 $this->info('Process done!');
 
                 if ($this->option('editor')) {
-                    exec($this->editor . $open_files);
+                    exec($this->config('editor') . $open_files);
                 }
 
             }

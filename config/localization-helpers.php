@@ -8,11 +8,13 @@ return [
     |--------------------------------------------------------------------------
     |
     | Localization::Missing will search recursively for lemmas in all php files
-    | included in these folders. You can use these keywords :
+    | included in these folders. You can use these keywords:
+    |
     | - %APP     : the laravel app folder of your project
     | - %BASE    : the laravel base folder of your project
     | - %PUBLIC  : the laravel public folder of your project
     | - %STORAGE : the laravel storage folder of your project
+    |
     | No error or exception is thrown when a folder does not exist.
     |
     */
@@ -44,7 +46,8 @@ return [
     |
     | You can overwrite where your lang folder is located
     |
-    | If null or missing, Localization::Missing will search :
+    | If null or missing, Localization::Missing will search
+    |
     | - first in app_path() . DIRECTORY_SEPARATOR . 'lang',
     | - then  in base_path() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'lang',
     |
@@ -113,6 +116,7 @@ return [
     |           'firstname' => 'Name',
     |           'email'     => 'Email address',
     |           ...
+    |
     |   Then you can define in this parameter value dynamo for example so that
     |   Localization::Missing will not exclude lastname, firstname and email from
     |   translation files.
@@ -120,10 +124,9 @@ return [
     */
 
     'never_obsolete_keys' => [
-        'dynamic' ,
-        'fields' ,
+        'dynamic',
+        'fields',
     ],
-
 
     /*
     |--------------------------------------------------------------------------

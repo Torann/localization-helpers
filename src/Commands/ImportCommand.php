@@ -6,7 +6,7 @@ use Exception;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 
-class ImportCommand extends LocalizationAbstract
+class ImportCommand extends AbstractCommand
 {
     /**
      * The console command name.
@@ -31,14 +31,12 @@ class ImportCommand extends LocalizationAbstract
 
     /**
      * Create a new command instance.
-     *
-     * @param array $config
      */
-    public function __construct(array $config)
+    public function __construct()
     {
-        $this->import_path = array_get($config, 'import_path');
+        parent::__construct();
 
-        parent::__construct($config);
+        $this->import_path = array_get($this->config, 'import_path');
     }
 
     /**
@@ -123,7 +121,7 @@ class ImportCommand extends LocalizationAbstract
             [
                 'group',
                 InputArgument::REQUIRED,
-                'The group (which is the name of the language file without the extension)'
+                'The group (which is the name of the language file without the extension)',
             ],
         ];
     }
@@ -141,21 +139,21 @@ class ImportCommand extends LocalizationAbstract
                 'd',
                 InputOption::VALUE_OPTIONAL,
                 'The optional delimiter parameter sets the field delimiter (one character only).',
-                ','
+                ',',
             ],
             [
                 'enclosure',
                 'c',
                 InputOption::VALUE_OPTIONAL,
                 'The optional enclosure parameter sets the field enclosure (one character only).',
-                '"'
+                '"',
             ],
             [
                 'escape',
                 'e',
                 InputOption::VALUE_OPTIONAL,
                 'The escape character (one character only). Defaults as a backslash.',
-                '\\'
+                '\\',
             ],
             ['path', 'p', InputOption::VALUE_OPTIONAL, 'The CSV file path to be imported', $this->import_path],
         ];

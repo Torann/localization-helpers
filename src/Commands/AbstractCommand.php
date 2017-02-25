@@ -3,50 +3,23 @@
 namespace Torann\LocalizationHelpers\Commands;
 
 use RegexIterator;
+use Illuminate\Support\Arr;
 use RecursiveRegexIterator;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
 use Illuminate\Console\Command;
 
-abstract class LocalizationAbstract extends Command
+abstract class AbstractCommand extends Command
 {
     /**
-     * functions and method to catch translations
+     * Configuration.
      *
      * @var array
      */
-    protected $trans_methods = [];
+    protected $config = [];
 
     /**
-     * functions and method to catch translations
-     *
-     * @var string
-     */
-    protected $editor = '';
-
-    /**
-     * Folders to parse for missing translations
-     *
-     * @var array
-     */
-    protected $folders = [];
-
-    /**
-     * Never make lemmas containing these keys obsolete
-     *
-     * @var array
-     */
-    protected $never_obsolete_keys = [];
-
-    /**
-     * Never manage these lang files
-     *
-     * @var array
-     */
-    protected $ignore_lang_files = [];
-
-    /**
-     * Should comands display something
+     * Should commands display something
      *
      * @var bool
      */
@@ -54,17 +27,10 @@ abstract class LocalizationAbstract extends Command
 
     /**
      * Create a new command instance.
-     *
-     * @param array $config
      */
-    public function __construct(array $config)
+    public function __construct()
     {
-        $this->trans_methods = array_get($config, 'trans_methods');
-        $this->folders = array_get($config, 'folders');
-        $this->ignore_lang_files = array_get($config, 'ignore_lang_files');
-        $this->lang_folder_path = array_get($config, 'lang_folder_path');
-        $this->never_obsolete_keys = array_get($config, 'never_obsolete_keys');
-        $this->editor = array_get($config, 'editor_command_line');
+        $this->config = config('localization-helpers');
 
         parent::__construct();
     }
@@ -73,11 +39,14 @@ abstract class LocalizationAbstract extends Command
      * Get the lang directory path
      *
      * @param  string $path
+     *
      * @return string
      */
     protected function getLangPath($path = null)
     {
-        if (empty($this->lang_folder_path)) {
+        $lang_folder_path = $this->config('lang_folder_path', null);
+
+        if (empty($lang_folder_path)) {
             $directories = [
                 app_path() . DIRECTORY_SEPARATOR . 'lang',
                 base_path() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'lang',
@@ -100,11 +69,11 @@ abstract class LocalizationAbstract extends Command
             die();
         }
         else {
-            if (file_exists($this->lang_folder_path)) {
-                return $this->lang_folder_path;
+            if (file_exists($lang_folder_path)) {
+                return $lang_folder_path;
             }
 
-            $this->error('No lang folder found in your custom path: "' . $this->lang_folder_path . '"');
+            $this->error("No lang folder found in your custom path: \"{$lang_folder_path}\"");
             $this->line('');
 
             die();
@@ -114,9 +83,9 @@ abstract class LocalizationAbstract extends Command
     /**
      * Display console message
      *
-     * @param  string  $string
-     * @param  string  $style
-     * @param  null|int|string  $verbosity
+     * @param  string          $string
+     * @param  string          $style
+     * @param  null|int|string $verbosity
      *
      * @return  void
      */
@@ -130,8 +99,8 @@ abstract class LocalizationAbstract extends Command
     /**
      * Display console message
      *
-     * @param  string  $string
-     * @param  null|int|string  $verbosity
+     * @param  string          $string
+     * @param  null|int|string $verbosity
      *
      * @return  void
      */
@@ -145,8 +114,8 @@ abstract class LocalizationAbstract extends Command
     /**
      * Display console message
      *
-     * @param  string  $string
-     * @param  null|int|string  $verbosity
+     * @param  string          $string
+     * @param  null|int|string $verbosity
      *
      * @return  void
      */
@@ -160,8 +129,8 @@ abstract class LocalizationAbstract extends Command
     /**
      * Display console message
      *
-     * @param  string  $string
-     * @param  null|int|string  $verbosity
+     * @param  string          $string
+     * @param  null|int|string $verbosity
      *
      * @return  void
      */
@@ -175,8 +144,8 @@ abstract class LocalizationAbstract extends Command
     /**
      * Display console message
      *
-     * @param  string  $string
-     * @param  null|int|string  $verbosity
+     * @param  string          $string
+     * @param  null|int|string $verbosity
      *
      * @return void
      */
@@ -208,7 +177,7 @@ abstract class LocalizationAbstract extends Command
                 app_path(),
                 base_path(),
                 public_path(),
-                storage_path()
+                storage_path(),
             ],
             $path
         );
@@ -266,7 +235,7 @@ abstract class LocalizationAbstract extends Command
         $result = [];
         $string = file_get_contents($path);
 
-        foreach (array_flatten($this->trans_methods) as $method) {
+        foreach (array_flatten($this->config('trans_methods', [])) as $method) {
             preg_match_all($method, $string, $matches);
 
             foreach ($matches[1] as $k => $v) {
@@ -282,5 +251,18 @@ abstract class LocalizationAbstract extends Command
         }
 
         return $result;
+    }
+
+    /**
+     * Get configuration value.
+     *
+     * @param string $key
+     * @param mixed  $default
+     *
+     * @return mixed
+     */
+    public function config($key, $default = null)
+    {
+        return Arr::get($this->config, $key, $default);
     }
 }

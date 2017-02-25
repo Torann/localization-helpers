@@ -5,7 +5,7 @@ namespace Torann\LocalizationHelpers\Commands;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 
-class ExportCommand extends LocalizationAbstract
+class ExportCommand extends AbstractCommand
 {
     /**
      * The console command name.
@@ -30,14 +30,12 @@ class ExportCommand extends LocalizationAbstract
 
     /**
      * Create a new command instance.
-     *
-     * @param array $config
      */
-    public function __construct(array $config)
+    public function __construct()
     {
-        $this->export_path = array_get($config, 'export_path');
+        parent::__construct();
 
-        parent::__construct($config);
+        $this->export_path = array_get($this->config, 'export_path');
     }
 
     /**
@@ -107,7 +105,7 @@ class ExportCommand extends LocalizationAbstract
             [
                 'group',
                 InputArgument::REQUIRED,
-                'The group (which is the name of the language file without the extension)'
+                'The group (which is the name of the language file without the extension)',
             ],
         ];
     }
@@ -125,14 +123,14 @@ class ExportCommand extends LocalizationAbstract
                 'd',
                 InputOption::VALUE_OPTIONAL,
                 'The optional delimiter parameter sets the field delimiter (one character only).',
-                ','
+                ',',
             ],
             [
                 'enclosure',
                 'c',
                 InputOption::VALUE_OPTIONAL,
                 'The optional enclosure parameter sets the field enclosure (one character only).',
-                '"'
+                '"',
             ],
             ['path', 'p', InputOption::VALUE_OPTIONAL, 'Save the output to this path', $this->export_path],
         ];
