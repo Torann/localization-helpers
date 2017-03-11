@@ -63,17 +63,17 @@ class LocalizationMissing extends AbstractCommand
 
         if (count($lemmas) === 0) {
             $this->comment("No lemma have been found in code.");
-            $this->line("I have searched recursively in PHP files in these directories:");
+            $this->line("In these directories:");
 
             foreach ($this->config('folders', []) as $path) {
                 $path = $this->getPath($path);
-                $this->line("\t{$path}");
+                $this->line("    {$path}");
             }
 
-            $this->line("for these functions/methods:");
+            $this->line("For these functions/methods:");
 
             foreach ($this->config('trans_methods', []) as $k => $v) {
-                $this->line("\t{$k}");
+                $this->line("    {$k}");
             }
 
             die();
@@ -101,14 +101,15 @@ class LocalizationMissing extends AbstractCommand
             else {
                 array_set(
                     $lemmas_structured,
-                    $key,
-                    str_replace('&period;', '.', $value) // @deprecated in version 1.5
+                    $this->encodeKey($key),
+                    $value
                 );
             }
         }
 
         $this->line('');
 
+//dd($lemmas_structured['messages']);
         /////////////////////////////////////
         // Generate lang files :           //
         // - add missing lemmas on top     //
@@ -127,7 +128,7 @@ class LocalizationMissing extends AbstractCommand
                         if (in_array($family, $this->config('ignore_lang_files', []))) {
                             if ($this->option('verbose')) {
                                 $this->line('');
-                                $this->info("\t! Skip lang file '{$family}' !");
+                                $this->info("    ! Skip lang file '{$family}' !");
                             }
 
                             continue;
@@ -142,26 +143,26 @@ class LocalizationMissing extends AbstractCommand
                         $this->line('    ' . $this->getShortPath($file_lang_path));
 
                         if (!is_writable(dirname($file_lang_path))) {
-                            $this->error("\t> Unable to write file in directory " . dirname($file_lang_path));
+                            $this->error("    > Unable to write file in directory " . dirname($file_lang_path));
                             die();
                         }
 
                         if (!file_exists($file_lang_path)) {
-                            $this->info("\t> File has been created");
+                            $this->info("    > File has been created");
                         }
 
                         if (!touch($file_lang_path)) {
-                            $this->error("\t> Unable to touch file {$file_lang_path}");
+                            $this->error("    > Unable to touch file {$file_lang_path}");
                             die();
                         }
 
                         if (!is_readable($file_lang_path)) {
-                            $this->error("\t> Unable to read file {$file_lang_path}");
+                            $this->error("    > Unable to read file {$file_lang_path}");
                             die();
                         }
 
                         if (!is_writable($file_lang_path)) {
-                            $this->error("\t> Unable to write in file {$file_lang_path}");
+                            $this->error("    > Unable to write in file {$file_lang_path}");
                             die();
                         }
 
@@ -170,7 +171,6 @@ class LocalizationMissing extends AbstractCommand
 
                         $new_lemmas = array_dot($array);
                         $final_lemmas = [];
-                        $display_already_comment = false;
                         $something_to_do = false;
                         $i = 0;
 
@@ -186,39 +186,21 @@ class LocalizationMissing extends AbstractCommand
                         // Deal with new lemmas //
                         //////////////////////////
                         if (count($welcome_lemmas) > 0) {
-                            $display_already_comment = true;
                             $something_to_do = true;
                             $there_are_new = true;
-                            $this->info("\t" . count($welcome_lemmas) . " new strings to translate");
-                            $final_lemmas["TRANS___NEW___TRANS"] = "TRANS___NEW___TRANS";
+                            $this->info("    " . count($welcome_lemmas) . " new strings to translate");
 
                             foreach ($welcome_lemmas as $key => $path) {
-                                $value = $key;
-
-//                                // Clean up the key value
-//                                if (substr($key, 0, strpos($key, '.'))) {
-//                                    $value = substr($key, strpos($key, '.') + 1);
-//                                }
+                                $value = $this->decodeKey($key);
 
                                 if ($this->option('verbose')) {
-                                    $this->line("\t\t<info>{$key}</info> in " . $this->getShortPath($path));
+                                    $this->line("        <info>{$key}</info> in " . $this->getShortPath($path));
                                 }
 
-                                if (!$this->option('no-comment')) {
-                                    $final_lemmas['TRANS___COMMENT___TRANS' . $i] = "Defined in file $path";
-                                    $i = $i + 1;
-                                }
-
-                                // Clean up sentence period punctuation
-                                if ($this->isMultidimensional($key)) {
-                                    array_set($final_lemmas,
-                                        $key,
-                                        str_replace('%LEMMA', $value, $this->option('new-value'))
-                                    );
-                                }
-                                else {
-                                    $final_lemmas[$key] = str_replace('%LEMMA', $value, $this->option('new-value'));
-                                }
+                                array_set($final_lemmas,
+                                    $key,
+                                    str_replace('%LEMMA', $value, $this->option('new-value'))
+                                );
                             }
                         }
 
@@ -227,16 +209,14 @@ class LocalizationMissing extends AbstractCommand
                         ///////////////////////////////
                         if (count($already_lemmas) > 0) {
                             if ($this->option('verbose')) {
-                                $this->line("\t\t\t" . count($already_lemmas) . " already translated strings");
+                                $this->line("            " . count($already_lemmas) . " already translated strings");
                             }
-
-                            $final_lemmas["TRANS___OLD___TRANS"] = "TRANS___OLD___TRANS";
 
                             foreach ($already_lemmas as $key => $value) {
                                 array_set(
                                     $final_lemmas,
                                     $key,
-                                    str_replace('&period;', '.', $value) // @deprecated in version 1.5
+                                    $value
                                 );
                             }
                         }
@@ -247,17 +227,18 @@ class LocalizationMissing extends AbstractCommand
                         if (count($obsolete_lemmas) > 0) {
                             // Remove all dynamic fields
                             foreach ($obsolete_lemmas as $key => $value) {
+                                $id = $this->decodeKey($key);
+
                                 foreach ($this->config('never_obsolete_keys', []) as $remove) {
                                     $remove = "{$remove}.";
 
-                                    if (substr($key, 0, strlen($remove)) === $remove
-                                        || strpos($key, ".{$remove}") !== false
+                                    if (substr($id, 0, strlen($remove)) === $remove
+                                        || strpos($id, ".{$remove}") !== false
                                     ) {
 
                                         array_set($final_lemmas,
                                             $key,
-                                            str_replace('%LEMMA', str_replace('&period;', '.', $value), // @deprecated in version 1.5
-                                                $this->option('new-value'))
+                                            str_replace('%LEMMA', $value, $this->option('new-value'))
                                         );
 
                                         unset($obsolete_lemmas[$key]);
@@ -267,54 +248,27 @@ class LocalizationMissing extends AbstractCommand
                         }
 
                         if (count($obsolete_lemmas) > 0) {
-                            $display_already_comment = true;
                             $something_to_do = true;
 
-                            $this->comment($this->option('no-obsolete')
-                                ? "\t" . count($obsolete_lemmas) . " obsolete strings (will be deleted)"
-                                : "\t" . count($obsolete_lemmas) . " obsolete strings (can be deleted manually in the generated file)"
-                            );
-
-                            $final_lemmas["TRANS___OBSOLETE___TRANS"] = "TRANS___OBSOLETE___TRANS";
-
-                            foreach ($obsolete_lemmas as $key => $value) {
-                                if ($this->option('verbose')) {
-                                    $this->line("\t\t\t<comment>{$key}</comment>");
-                                }
-
-                                if (!$this->option('no-obsolete')) {
-                                    array_set(
-                                        $final_lemmas,
-                                        $key,
-                                        str_replace('&period;', '.', $value) // @deprecated in version 1.5
-                                    );
+                            $this->comment("    " . count($obsolete_lemmas) . " obsolete strings (will be deleted)");
+                            if ($this->option('verbose')) {
+                                foreach ($obsolete_lemmas as $key => $value) {
+                                    $this->line("            <comment>" . $this->decodeKey($key) . "</comment>");
                                 }
                             }
                         }
 
                         if (($something_to_do === true) || ($this->option('force'))) {
                             $content = var_export($final_lemmas, true);
-                            $content = preg_replace("@'TRANS___COMMENT___TRANS[0-9]*' => '(.*)',@", '// $1', $content);
-                            $content = str_replace(
-                                [
-                                    "'TRANS___NEW___TRANS' => 'TRANS___NEW___TRANS',",
-                                    "'TRANS___OLD___TRANS' => 'TRANS___OLD___TRANS',",
-                                    "'TRANS___OBSOLETE___TRANS' => 'TRANS___OBSOLETE___TRANS',",
-                                ],
-                                [
-                                    '//============================== New strings to translate ==============================//',
-                                    ($display_already_comment === true) ? "\n  //==================================== Translations ====================================//" : '',
-                                    "\n  //================================== Obsolete strings ==================================//",
-                                ],
-                                $content
-                            );
 
-                            // Set file content
-                            $job[$file_lang_path] = "<?php\n\nreturn " . $content . ";";
+                            // Decode all keys
+                            $content = $this->decodeKey($content);
+
+                            $job[$file_lang_path] = "<?php\n\nreturn {$content};";
                         }
                         else {
                             if ($this->option('verbose')) {
-                                $this->line("\t\t> <comment>Nothing to do for this file</comment>");
+                                $this->line("        > <comment>Nothing to do for this file</comment>");
                             }
                         }
                     }
@@ -359,7 +313,7 @@ class LocalizationMissing extends AbstractCommand
                             rename($file_lang_path, $backup_path);
                         }
 
-                        $this->line("\t<info>" . $this->getShortPath($file_lang_path) . "</info> -> <info>" . $this->getShortPath($backup_path) . "</info>");
+                        $this->line("    <info>" . $this->getShortPath($file_lang_path) . "</info> -> <info>" . $this->getShortPath($backup_path) . "</info>");
                     }
 
                     $this->line('');
@@ -372,7 +326,7 @@ class LocalizationMissing extends AbstractCommand
                         file_put_contents($file_lang_path, $file_content);
                     }
 
-                    $this->line("\t<info>" . $this->getShortPath($file_lang_path));
+                    $this->line("    <info>" . $this->getShortPath($file_lang_path));
 
                     if ($this->option('editor')) {
                         $open_files .= ' ' . escapeshellarg($file_lang_path);
@@ -405,7 +359,34 @@ class LocalizationMissing extends AbstractCommand
     }
 
     /**
-     * Determine if the given string is ment to be a
+     * Encode the key so that the array set function doesn't
+     * go crazy when it sets the values.
+     *
+     * @param string $string
+     *
+     * @return string
+     */
+    protected function encodeKey($string)
+    {
+        return preg_replace_callback('/(\.\s|\.$)/', function($matches) {
+            return str_replace('.', '&#46;', $matches[0]);
+        }, $string);
+    }
+
+    /**
+     * Decode the key so it looks normal again.
+     *
+     * @param string $string
+     *
+     * @return string
+     */
+    protected function decodeKey($string)
+    {
+        return str_replace('&#46;', '.', $string);
+    }
+
+    /**
+     * Determine if the given string is meant to be a
      * multidimensional array.
      *
      * @param string $string
@@ -414,7 +395,7 @@ class LocalizationMissing extends AbstractCommand
      */
     protected function isMultidimensional($string)
     {
-        return str_contains(preg_replace('/(\.\s|\.$)/', '&period;', $string), '.');
+        return str_contains($this->encodeKey($string), '.');
     }
 
     /**
@@ -447,7 +428,6 @@ class LocalizationMissing extends AbstractCommand
             ],
             ['no-backup', 'b', InputOption::VALUE_NONE, 'Do not backup lang file (be careful, I am not a good coder)'],
             ['no-comment', 'c', InputOption::VALUE_NONE, 'Do not add comments in lang files for lemma definition'],
-            ['no-obsolete', 'o', InputOption::VALUE_NONE, 'Do not write obsolete lemma'],
             [
                 'silent',
                 's',
