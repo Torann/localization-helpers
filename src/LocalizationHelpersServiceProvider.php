@@ -37,7 +37,6 @@ class LocalizationHelpersServiceProvider extends ServiceProvider
 
         $this->commands([
             Commands\LocalizationMissing::class,
-            Commands\LocalizationFind::class,
             Commands\ExportCommand::class,
             Commands\ImportCommand::class,
         ]);
