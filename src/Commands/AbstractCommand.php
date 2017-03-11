@@ -162,7 +162,7 @@ abstract class AbstractCommand extends Command
      *
      * @param string $path the relative path
      *
-     * @return string the absolute path
+     * @return string|array
      */
     protected function getPath($path)
     {

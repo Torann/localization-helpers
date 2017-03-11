@@ -2,23 +2,25 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
-use Symfony\Component\Console\Input\InputOption;
-
 class LocalizationMissing extends AbstractCommand
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'localization:missing';
+    protected $signature = 'localization:missing
+        {--f|force : Force file rewrite even if there is nothing to do}
+        {--l|new-value=%LEMMA : Value of new found lemmas (use %LEMMA for the lemma value)}
+        {--b|backup : Backup lang file.}
+        {--d|dirty : Only return the exit code (use $? in shell to know whether there are missing lemma)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Parse all translations in app directory and build all lang files';
+    protected $description = 'Parse all translations in app directory and build all lang files.';
 
     /**
      * Execute the console command.
@@ -27,67 +29,9 @@ class LocalizationMissing extends AbstractCommand
      */
     public function fire()
     {
-        $folders = $this->getPath($this->config('folders', []));
-        $this->display = !$this->option('silent');
+        $this->display = !$this->option('dirty');
 
-        //////////////////////////////////////////////////
-        // Display where translations are searched in //
-        //////////////////////////////////////////////////
-        if ($this->option('verbose')) {
-            $this->line("Lemmas will be searched in the following directories:");
-
-            foreach ($folders as $path) {
-                $this->line('    <info>' . $path . '</info>');
-            }
-
-            $this->line('');
-        }
-
-        ////////////////////////////////
-        // Parse all lemmas from code //
-        ////////////////////////////////
-        $lemmas = [];
-
-        foreach ($folders as $path) {
-            foreach ($this->getPhpFiles($path) as $php_file_path => $dumb) {
-                $lemma = [];
-
-                foreach ($this->extractTranslationFromFile($php_file_path) as $k => $v) {
-                    $real_value = eval("return $k;");
-                    $lemma[$real_value] = $php_file_path;
-                }
-
-                $lemmas = array_merge($lemmas, $lemma);
-            }
-        }
-
-        if (count($lemmas) === 0) {
-            $this->comment("No lemma have been found in code.");
-            $this->line("In these directories:");
-
-            foreach ($this->config('folders', []) as $path) {
-                $path = $this->getPath($path);
-                $this->line("    {$path}");
-            }
-
-            $this->line("For these functions/methods:");
-
-            foreach ($this->config('trans_methods', []) as $k => $v) {
-                $this->line("    {$k}");
-            }
-
-            die();
-        }
-
-        $this->line((count($lemmas) > 1) ? count($lemmas) . " lemmas have been found in code" : "1 lemma has been found in code");
-
-        if ($this->option('verbose')) {
-            foreach ($lemmas as $key => $value) {
-                if (strpos($key, '.') !== false) {
-                    $this->line('    <info>' . $key . '</info> in file <comment>' . $this->getShortPath($value) . '</comment>');
-                }
-            }
-        }
+        $lemmas = $this->getLemmas();
 
         /////////////////////////////////////////////
         // Convert dot lemmas to structured lemmas //
@@ -109,7 +53,6 @@ class LocalizationMissing extends AbstractCommand
 
         $this->line('');
 
-//dd($lemmas_structured['messages']);
         /////////////////////////////////////
         // Generate lang files :           //
         // - add missing lemmas on top     //
@@ -142,37 +85,11 @@ class LocalizationMissing extends AbstractCommand
 
                         $this->line('    ' . $this->getShortPath($file_lang_path));
 
-                        if (!is_writable(dirname($file_lang_path))) {
-                            $this->error("    > Unable to write file in directory " . dirname($file_lang_path));
-                            die();
-                        }
-
-                        if (!file_exists($file_lang_path)) {
-                            $this->info("    > File has been created");
-                        }
-
-                        if (!touch($file_lang_path)) {
-                            $this->error("    > Unable to touch file {$file_lang_path}");
-                            die();
-                        }
-
-                        if (!is_readable($file_lang_path)) {
-                            $this->error("    > Unable to read file {$file_lang_path}");
-                            die();
-                        }
-
-                        if (!is_writable($file_lang_path)) {
-                            $this->error("    > Unable to write in file {$file_lang_path}");
-                            die();
-                        }
-
-                        $a = include($file_lang_path);
-                        $old_lemmas = (is_array($a)) ? array_dot($a) : [];
+                        $old_lemmas = $this->getOldLemmas($file_lang_path);
 
                         $new_lemmas = array_dot($array);
                         $final_lemmas = [];
                         $something_to_do = false;
-                        $i = 0;
 
                         $obsolete_lemmas = array_diff_key($old_lemmas, $new_lemmas);
                         $welcome_lemmas = array_diff_key($new_lemmas, $old_lemmas);
@@ -277,69 +194,46 @@ class LocalizationMissing extends AbstractCommand
         }
 
         ///////////////////////////////////////////
-        // Silent mode                           //
-        // only return an exit code on new lemma //
+        // Dirty mode                           //
         ///////////////////////////////////////////
-        if ($this->option('silent')) {
-            if ($there_are_new === true) {
-                return false;
-            }
-            else {
-                return true;
-            }
+        if ($this->option('dirty')) {
+            return $there_are_new;
         }
 
         ///////////////////////////////////////////
         // Normal mode                           //
         ///////////////////////////////////////////
         if (count($job) > 0) {
-            if ($this->option('no-interaction')) {
-                $do = true;
-            }
-            else {
-                $this->line('');
-                $do = ($this->ask('Do you wish to apply these changes now? [yes|no]') === 'yes');
-                $this->line('');
-            }
+            $this->line('');
+            $do = ($this->ask('Do you wish to apply these changes now? [yes|no]') === 'yes');
+            $this->line('');
 
             if ($do === true) {
-                if (!$this->option('no-backup')) {
+                if ($this->option('backup')) {
                     $this->line('Backup files:');
 
                     foreach ($job as $file_lang_path => $file_content) {
                         $backup_path = preg_replace('/\..+$/', '.' . date("Ymd_His") . '.php', $file_lang_path);
 
-                        if (!$this->option('dry-run')) {
-                            rename($file_lang_path, $backup_path);
-                        }
+                        rename($file_lang_path, $backup_path);
 
-                        $this->line("    <info>" . $this->getShortPath($file_lang_path) . "</info> -> <info>" . $this->getShortPath($backup_path) . "</info>");
+                        $this->line("    <info>" . $this->getShortPath($file_lang_path)
+                            . "</info> -> <info>" . $this->getShortPath($backup_path) . "</info>");
                     }
 
                     $this->line('');
                 }
 
                 $this->line('Save files:');
-                $open_files = '';
+
                 foreach ($job as $file_lang_path => $file_content) {
-                    if (!$this->option('dry-run')) {
-                        file_put_contents($file_lang_path, $file_content);
-                    }
-
+                    file_put_contents($file_lang_path, $file_content);
                     $this->line("    <info>" . $this->getShortPath($file_lang_path));
-
-                    if ($this->option('editor')) {
-                        $open_files .= ' ' . escapeshellarg($file_lang_path);
-                    }
                 }
+
                 $this->line('');
 
                 $this->info('Process done!');
-
-                if ($this->option('editor')) {
-                    exec($this->config('editor') . $open_files);
-                }
-
             }
             else {
                 $this->line('');
@@ -347,15 +241,13 @@ class LocalizationMissing extends AbstractCommand
             }
         }
         else {
-            if ($this->option('silent')) {
-                return true;
-            }
-
             $this->line('');
             $this->info('All translations are up to date.');
         }
 
         $this->line('');
+
+        return false;
     }
 
     /**
@@ -368,7 +260,7 @@ class LocalizationMissing extends AbstractCommand
      */
     protected function encodeKey($string)
     {
-        return preg_replace_callback('/(\.\s|\.$)/', function($matches) {
+        return preg_replace_callback('/(\.\s|\.$)/', function ($matches) {
             return str_replace('.', '&#46;', $matches[0]);
         }, $string);
     }
@@ -399,42 +291,112 @@ class LocalizationMissing extends AbstractCommand
     }
 
     /**
-     * Get the console command arguments.
+     * Get the lemmas values from the provided directories.
+     *
+     * @param array  $lemmas
      *
      * @return array
      */
-    protected function getArguments()
+    protected function getLemmas(array $lemmas = [])
     {
-        return [];
+        // Get folders
+        $folders = $this->getPath($this->config('folders', []));
+
+        foreach ($folders as $path) {
+            if ($this->option('verbose')) {
+                $this->line('    <info>' . $path . '</info>');
+            }
+
+            foreach ($this->getPhpFiles($path) as $php_file_path => $dumb) {
+                $lemma = [];
+
+                foreach ($this->extractTranslationFromFile($php_file_path) as $k => $v) {
+                    $real_value = eval("return $k;");
+                    $lemma[$real_value] = $php_file_path;
+                }
+
+                $lemmas = array_merge($lemmas, $lemma);
+            }
+        }
+
+        if (count($lemmas) === 0) {
+            $this->comment("No lemma have been found in the code.");
+            $this->line("In these directories:");
+
+            foreach ($this->config('folders', []) as $path) {
+                $path = $this->getPath($path);
+                $this->line("    {$path}");
+            }
+
+            $this->line("For these functions/methods:");
+
+            foreach ($this->config('trans_methods', []) as $k => $v) {
+                $this->line("    {$k}");
+            }
+
+            die();
+        }
+
+        $this->line((count($lemmas) > 1) ? count($lemmas)
+            . " lemmas have been found in the code"
+            : "1 lemma has been found in the code");
+
+        if ($this->option('verbose')) {
+            foreach ($lemmas as $key => $value) {
+                if (strpos($key, '.') !== false) {
+                    $this->line('    <info>' . $key . '</info> in file <comment>'
+                        . $this->getShortPath($value) . '</comment>');
+                }
+            }
+        }
+
+        return $lemmas;
     }
 
     /**
-     * Get the console command options.
+     * Get the old lemmas values.
+     *
+     * @param string $file_lang_path
+     * @param array  $values
      *
      * @return array
      */
-    protected function getOptions()
+    protected function getOldLemmas($file_lang_path, array $values = [])
     {
-        return [
-            ['dry-run', 'r', InputOption::VALUE_NONE, 'Dry run : run process but do not write anything'],
-            ['editor', 'e', InputOption::VALUE_NONE, 'Open files which need to be edited at the end of the process'],
-            ['force', 'f', InputOption::VALUE_NONE, 'Force file rewrite even if there is nothing to do'],
-            [
-                'new-value',
-                'l',
-                InputOption::VALUE_OPTIONAL,
-                'Value of new found lemmas (use %LEMMA for the lemma value)',
-                '%LEMMA',
-            ],
-            ['no-backup', 'b', InputOption::VALUE_NONE, 'Do not backup lang file (be careful, I am not a good coder)'],
-            ['no-comment', 'c', InputOption::VALUE_NONE, 'Do not add comments in lang files for lemma definition'],
-            [
-                'silent',
-                's',
-                InputOption::VALUE_NONE,
-                'Use this option to only return the exit code (use $? in shell to know whether there are missing lemma)',
-            ],
-        ];
-    }
+        if (!is_writable(dirname($file_lang_path))) {
+            $this->error("    > Unable to write file in directory " . dirname($file_lang_path));
+            die();
+        }
 
+        if (!file_exists($file_lang_path)) {
+            $this->info("    > File has been created");
+        }
+
+        if (!touch($file_lang_path)) {
+            $this->error("    > Unable to touch file {$file_lang_path}");
+            die();
+        }
+
+        if (!is_readable($file_lang_path)) {
+            $this->error("    > Unable to read file {$file_lang_path}");
+            die();
+        }
+
+        if (!is_writable($file_lang_path)) {
+            $this->error("    > Unable to write in file {$file_lang_path}");
+            die();
+        }
+
+        // Get lang file values
+        $lang = include($file_lang_path);
+
+        // Parse values
+        $lang = is_array($lang) ? array_dot($lang) : [];
+
+        foreach ($lang as $key => $value) {
+            $values[$this->encodeKey($key)] = $value;
+        }
+
+        return $values;
+    }
 }
