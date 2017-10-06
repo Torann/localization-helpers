@@ -23,11 +23,21 @@ class LocalizationMissing extends AbstractCommand
     protected $description = 'Parse all translations in app directory and build all lang files.';
 
     /**
-     * Execute the console command.
+     * Execute the console command for Laravel 5.4 and below
      *
-     * @return mixed
+     * @return void
      */
     public function fire()
+    {    
+        $this->handle();
+    }
+
+    /**
+     * Execute the console command.
+     *
+     * @return void
+     */
+    public function handle()
     {
         $this->display = !$this->option('dirty');
 
