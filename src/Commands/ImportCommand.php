@@ -3,17 +3,22 @@
 namespace Torann\LocalizationHelpers\Commands;
 
 use Exception;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Input\InputArgument;
+use Illuminate\Support\Arr;
 
 class ImportCommand extends AbstractCommand
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'localization:import';
+    protected $signature = 'localization:import
+                                {locale : The locale to be imported}
+                                {group : The group or comma separated groups}
+                                {--d|delimiter=, : The optional delimiter parameter sets the field delimiter.}
+                                {--c|enclosure=" : The optional enclosure parameter sets the field enclosure.}
+                                {--e|escape=\\ : The escape character (one character only). Defaults as a backslash.}
+                                {--p|path= : The CSV file path to be imported.}';
 
     /**
      * The console command description.
@@ -27,7 +32,7 @@ class ImportCommand extends AbstractCommand
      *
      * @var string
      */
-    protected $import_path = '';
+    protected $import_path;
 
     /**
      * Create a new command instance.
@@ -40,42 +45,47 @@ class ImportCommand extends AbstractCommand
     }
 
     /**
-     * Execute the console command for Laravel 5.4 and below
-     *
-     * @return void
-     */
-    public function fire()
-    {    
-        $this->handle();
-    }
-
-    /**
      * Execute the console command.
      *
      * @return void
      */
     public function handle()
     {
+        // Set locale to use
         $locale = $this->argument('locale');
-        $group = $this->argument('group');
 
-        $path = $this->option('path');
+        // Set CSV options
         $delimiter = $this->option('delimiter');
         $enclosure = $this->option('enclosure');
         $escape = $this->option('escape');
 
-        $strings = [];
+        // Get path for the CSV.
+        $this->import_path = $this->option('path') ?: $this->import_path;
 
-        // Create storage dir
-        if (file_exists($path) == false) {
-            mkdir($path, 0755, true);
+        // Process all of the locales
+        foreach ($this->getGroupArgument() as $group) {
+            $this->import($locale, $group, $delimiter, $enclosure, $escape);
         }
+    }
 
+    /*
+     * Import CSV file.
+     *
+     * @param string $locale
+     * @param string $group
+     * @param string $delimiter
+     * @param string $enclosure
+     * @param string $escape
+     */
+    protected function import($locale, $group, $delimiter = ',', $enclosure ='"', $escape = '\\')
+    {
         // Create output device and write CSV.
-        if (($input_fp = fopen("{$path}/{$group}.csv", 'r')) === false) {
+        if (($input_fp = fopen("{$this->import_path}/{$group}.csv", 'r')) === false) {
             $this->error('Can\'t open the input file!');
             exit;
         }
+
+        $strings = [];
 
         // Write CSV lintes
         while (($data = fgetcsv($input_fp, 0, $delimiter, $enclosure, $escape)) !== false) {
@@ -88,7 +98,7 @@ class ImportCommand extends AbstractCommand
 
         $this->line('');
         $this->info("Successfully imported file:");
-        $this->info("{$path}/{$group}.csv");
+        $this->info("{$this->import_path}/{$group}.csv");
         $this->line('');
     }
 
@@ -102,16 +112,30 @@ class ImportCommand extends AbstractCommand
     {
         $translations = app('translator')->getLoader()->load($locale, $group);
 
+        // Process translations
         foreach ($new_translations as $key => $value) {
-            array_set($translations, $key, $value);
+            Arr::set(
+                $translations,
+                $this->encodeKey($key),
+                $value
+            );
         }
 
-        $header = "<?php\n\nreturn ";
-
+        // Get the language file path
         $language_file = $this->getLangPath("{$locale}/{$group}.php");
 
+        // Sanity check for new language files
+        $this->ensureFileExists($language_file);
+
         if (is_writable($language_file) && ($fp = fopen($language_file, 'w')) !== false) {
-            fputs($fp, $header . var_export($translations[$group], true) . ";\n");
+
+            // Export values
+            $content = var_export($translations[$group], true);
+
+            // Decode all keys
+            $content = $this->decodeKey($content);
+
+            fputs($fp, "<?php\n\nreturn {$content};");
             fclose($fp);
         }
         else {
@@ -120,52 +144,33 @@ class ImportCommand extends AbstractCommand
     }
 
     /**
-     * Get the console command arguments.
+     * Create the language file if one does not exist.
      *
-     * @return array
+     * @param string $path
      */
-    protected function getArguments()
+    protected function ensureFileExists($path)
     {
-        return [
-            ['locale', InputArgument::REQUIRED, 'The locale to be exported.'],
-            [
-                'group',
-                InputArgument::REQUIRED,
-                'The group (which is the name of the language file without the extension)',
-            ],
-        ];
+        if (file_exists($path) === false) {
+
+            // Create directory
+            @mkdir(dirname($path), 0777, true);
+
+            // Make the language file
+            touch($path);
+        }
     }
 
     /**
-     * Get the console command arguments.
+     * Get group argument.
      *
      * @return array
      */
-    protected function getOptions()
+    protected function getGroupArgument()
     {
-        return [
-            [
-                'delimiter',
-                'd',
-                InputOption::VALUE_OPTIONAL,
-                'The optional delimiter parameter sets the field delimiter (one character only).',
-                ',',
-            ],
-            [
-                'enclosure',
-                'c',
-                InputOption::VALUE_OPTIONAL,
-                'The optional enclosure parameter sets the field enclosure (one character only).',
-                '"',
-            ],
-            [
-                'escape',
-                'e',
-                InputOption::VALUE_OPTIONAL,
-                'The escape character (one character only). Defaults as a backslash.',
-                '\\',
-            ],
-            ['path', 'p', InputOption::VALUE_OPTIONAL, 'The CSV file path to be imported', $this->import_path],
-        ];
+        $groups = explode(',', preg_replace('/\s+/', '', $this->argument('group')));
+
+        return array_map(function ($group) {
+            return preg_replace('/\\.[^.\\s]{3,4}$/', '', $group);
+        }, $groups);
     }
 }
