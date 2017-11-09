@@ -54,7 +54,7 @@ abstract class AbstractCommand extends Command
 
             foreach ($directories as $directory) {
                 if (file_exists($directory)) {
-                    return $directory . ($path ? DIRECTORY_SEPARATOR . $path : $path);;
+                    return $directory . ($path ? DIRECTORY_SEPARATOR . $path : $path);
                 }
             }
 
@@ -251,6 +251,33 @@ abstract class AbstractCommand extends Command
         }
 
         return $result;
+    }
+
+    /**
+     * Encode the key so that the array set function doesn't
+     * go crazy when it sets the values.
+     *
+     * @param string $string
+     *
+     * @return string
+     */
+    protected function encodeKey($string)
+    {
+        return preg_replace_callback('/(\.\s|\.$)/', function ($matches) {
+            return str_replace('.', '&#46;', $matches[0]);
+        }, $string);
+    }
+
+    /**
+     * Decode the key so it looks normal again.
+     *
+     * @param string $string
+     *
+     * @return string
+     */
+    protected function decodeKey($string)
+    {
+        return str_replace('&#46;', '.', $string);
     }
 
     /**

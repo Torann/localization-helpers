@@ -2,6 +2,8 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
+use Illuminate\Support\Arr;
+
 class LocalizationMissing extends AbstractCommand
 {
     /**
@@ -10,10 +12,10 @@ class LocalizationMissing extends AbstractCommand
      * @var string
      */
     protected $signature = 'localization:missing
-        {--f|force : Force file rewrite even if there is nothing to do}
-        {--l|new-value=%LEMMA : Value of new found lemmas (use %LEMMA for the lemma value)}
-        {--b|backup : Backup lang file.}
-        {--d|dirty : Only return the exit code (use $? in shell to know whether there are missing lemma)}';
+                                {--f|force : Force file rewrite even if there is nothing to do}
+                                {--l|new-value=%LEMMA : Value of new found lemmas (use %LEMMA for the lemma value)}
+                                {--b|backup : Backup lang file.}
+                                {--d|dirty : Only return the exit code (use $? in shell to know whether there are missing lemma)}';
 
     /**
      * The console command description.
@@ -22,15 +24,6 @@ class LocalizationMissing extends AbstractCommand
      */
     protected $description = 'Parse all translations in app directory and build all lang files.';
 
-    /**
-     * Execute the console command for Laravel 5.4 and below
-     *
-     * @return void
-     */
-    public function fire()
-    {    
-        $this->handle();
-    }
 
     /**
      * Execute the console command.
@@ -53,7 +46,7 @@ class LocalizationMissing extends AbstractCommand
                 $this->line('    <error>' . $key . '</error> in file <comment>' . $this->getShortPath($value) . '</comment> <error>will not be included because it has no parent</error>');
             }
             else {
-                array_set(
+                Arr::set(
                     $lemmas_structured,
                     $this->encodeKey($key),
                     $value
@@ -97,7 +90,7 @@ class LocalizationMissing extends AbstractCommand
 
                         $old_lemmas = $this->getOldLemmas($file_lang_path);
 
-                        $new_lemmas = array_dot($array);
+                        $new_lemmas = Arr::dot($array);
                         $final_lemmas = [];
                         $something_to_do = false;
 
@@ -124,7 +117,7 @@ class LocalizationMissing extends AbstractCommand
                                     $this->line("        <info>{$key}</info> in " . $this->getShortPath($path));
                                 }
 
-                                array_set($final_lemmas,
+                                Arr::set($final_lemmas,
                                     $key,
                                     str_replace('%LEMMA', $value, $this->option('new-value'))
                                 );
@@ -140,7 +133,7 @@ class LocalizationMissing extends AbstractCommand
                             }
 
                             foreach ($already_lemmas as $key => $value) {
-                                array_set(
+                                Arr::set(
                                     $final_lemmas,
                                     $key,
                                     $value
@@ -163,7 +156,7 @@ class LocalizationMissing extends AbstractCommand
                                         || strpos($id, ".{$remove}") !== false
                                     ) {
 
-                                        array_set($final_lemmas,
+                                        Arr::set($final_lemmas,
                                             $key,
                                             str_replace('%LEMMA', $value, $this->option('new-value'))
                                         );
@@ -258,33 +251,6 @@ class LocalizationMissing extends AbstractCommand
         $this->line('');
 
         return false;
-    }
-
-    /**
-     * Encode the key so that the array set function doesn't
-     * go crazy when it sets the values.
-     *
-     * @param string $string
-     *
-     * @return string
-     */
-    protected function encodeKey($string)
-    {
-        return preg_replace_callback('/(\.\s|\.$)/', function ($matches) {
-            return str_replace('.', '&#46;', $matches[0]);
-        }, $string);
-    }
-
-    /**
-     * Decode the key so it looks normal again.
-     *
-     * @param string $string
-     *
-     * @return string
-     */
-    protected function decodeKey($string)
-    {
-        return str_replace('&#46;', '.', $string);
     }
 
     /**
@@ -401,7 +367,7 @@ class LocalizationMissing extends AbstractCommand
         $lang = include($file_lang_path);
 
         // Parse values
-        $lang = is_array($lang) ? array_dot($lang) : [];
+        $lang = is_array($lang) ? Arr::dot($lang) : [];
 
         foreach ($lang as $key => $value) {
             $values[$this->encodeKey($key)] = $value;
