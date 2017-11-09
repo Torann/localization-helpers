@@ -2,17 +2,21 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Input\InputArgument;
+use Illuminate\Support\Arr;
 
 class ExportCommand extends AbstractCommand
 {
     /**
-     * The console command name.
+     * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'localization:export';
+    protected $signature = 'localization:export
+                                {locale : The locale to be exported}
+                                {group : The group or comma separated groups}
+                                {--d|delimiter=, : The optional delimiter parameter sets the field delimiter.}
+                                {--c|enclosure=" : The optional enclosure parameter sets the field enclosure.}
+                                {--p|path= : Save the output to this path.}';
 
     /**
      * The console command description.
@@ -26,7 +30,7 @@ class ExportCommand extends AbstractCommand
      *
      * @var string
      */
-    protected $export_path = '';
+    protected $export_path;
 
     /**
      * Create a new command instance.
@@ -39,40 +43,47 @@ class ExportCommand extends AbstractCommand
     }
 
     /**
-     * Execute the console command for Laravel 5.4 and below
-     *
-     * @return void
-     */
-    public function fire()
-    {    
-        $this->handle();
-    }
-
-    /**
      * Execute the console command.
      *
      * @return void
      */
     public function handle()
     {
+        // Set locale to use
         $locale = $this->argument('locale');
-        $group = $this->argument('group');
 
+        // Set CSV options
         $delimiter = $this->option('delimiter');
         $enclosure = $this->option('enclosure');
 
-        $strings = $this->loadLangList($locale, $group);
-
-        // Create path device and write CSV.
-        $path = $this->option('path');
+        // Get path for the CSV.
+        $this->export_path = $this->option('path') ?: $this->export_path;
 
         // Create storage dir
-        if (file_exists($path) == false) {
-            mkdir($path, 0755, true);
+        if (file_exists($this->export_path) == false) {
+            mkdir($this->export_path, 0755, true);
         }
 
+        // Process all of the locales
+        foreach ($this->getGroupArgument() as $group) {
+            $this->createExport($locale, $group, $delimiter, $enclosure);
+        }
+    }
+
+    /*
+     * Create export file.
+     *
+     * @param string $locale
+     * @param string $group
+     * @param string $delimiter
+     * @param string $enclosure
+     */
+    protected function createExport($locale, $group, $delimiter = ',', $enclosure ='"')
+    {
+        $strings = $this->loadLangList($locale, $group);
+
         // Can't write to file
-        if (!($out = fopen("{$path}/{$group}.csv", 'w'))) {
+        if (!($out = fopen("{$this->export_path}/{$group}.csv", 'w'))) {
             $this->error('Can\'t open the input file!');
             exit;
         }
@@ -86,63 +97,33 @@ class ExportCommand extends AbstractCommand
 
         $this->line('');
         $this->info("Successfully created export file:");
-        $this->info("{$path}/{$group}.csv");
+        $this->info("{$this->export_path}/{$group}.csv");
         $this->line('');
     }
 
     /*
-     * Get list of languages
+     * Get list of languages.
      *
      * @return array
      */
     protected function loadLangList($locale, $group)
     {
         $translations = app('translator')->getLoader()->load($locale, $group);
-        $translations_with_prefix = array_dot([$group => $translations]);
 
-        return $translations_with_prefix;
+        return Arr::dot([$group => $translations]);
     }
 
     /**
-     * Get the console command arguments.
+     * Get group argument.
      *
      * @return array
      */
-    protected function getArguments()
+    protected function getGroupArgument()
     {
-        return [
-            ['locale', InputArgument::REQUIRED, 'The locale to be exported.'],
-            [
-                'group',
-                InputArgument::REQUIRED,
-                'The group (which is the name of the language file without the extension)',
-            ],
-        ];
-    }
+        $groups = explode(',', preg_replace('/\s+/', '', $this->argument('group')));
 
-    /**
-     * Get the console command arguments.
-     *
-     * @return array
-     */
-    protected function getOptions()
-    {
-        return [
-            [
-                'delimiter',
-                'd',
-                InputOption::VALUE_OPTIONAL,
-                'The optional delimiter parameter sets the field delimiter (one character only).',
-                ',',
-            ],
-            [
-                'enclosure',
-                'c',
-                InputOption::VALUE_OPTIONAL,
-                'The optional enclosure parameter sets the field enclosure (one character only).',
-                '"',
-            ],
-            ['path', 'p', InputOption::VALUE_OPTIONAL, 'Save the output to this path', $this->export_path],
-        ];
+        return array_map(function ($group) {
+            return preg_replace('/\\.[^.\\s]{3,4}$/', '', $group);
+        }, $groups);
     }
 }
