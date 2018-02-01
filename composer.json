@@ -2,7 +2,7 @@
   "name": "torann/localization-helpers",
   "description": "An artisan command package for easy translation management.",
   "keywords": ["laravel", "translation", "helpers", "import", "export", "CSV"],
-  "license": "BSD 2-Clause",
+  "license": "BSD-2-Clause",
   "authors": [
     {
       "name": "Daniel Stainback",
