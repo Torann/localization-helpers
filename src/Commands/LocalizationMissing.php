@@ -6,6 +6,9 @@ use Illuminate\Support\Arr;
 
 class LocalizationMissing extends AbstractCommand
 {
+    const SUCCESS = 0;
+    const ERROR = 1;
+
     /**
      * The name and signature of the console command.
      *
@@ -28,7 +31,7 @@ class LocalizationMissing extends AbstractCommand
     /**
      * Execute the console command.
      *
-     * @return void
+     * @return boolean
      */
     public function handle()
     {
@@ -200,7 +203,7 @@ class LocalizationMissing extends AbstractCommand
         // Dirty mode                           //
         ///////////////////////////////////////////
         if ($this->option('dirty')) {
-            return $there_are_new;
+            return $there_are_new ? self::ERROR : self::SUCCESS;
         }
 
         ///////////////////////////////////////////
@@ -250,7 +253,7 @@ class LocalizationMissing extends AbstractCommand
 
         $this->line('');
 
-        return false;
+        return self::SUCCESS;
     }
 
     /**
