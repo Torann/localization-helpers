@@ -182,6 +182,10 @@ class LocalizationMissing extends AbstractCommand
                         }
 
                         if (($something_to_do === true) || ($this->option('force'))) {
+                            // Sort final lemmas array by key
+                            ksort($final_lemmas);
+
+                            // Create a dumpy-dump
                             $content = var_export($final_lemmas, true);
 
                             // Decode all keys
@@ -272,7 +276,7 @@ class LocalizationMissing extends AbstractCommand
     /**
      * Get the lemmas values from the provided directories.
      *
-     * @param array  $lemmas
+     * @param array $lemmas
      *
      * @return array
      */
