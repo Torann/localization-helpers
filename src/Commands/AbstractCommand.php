@@ -19,6 +19,13 @@ abstract class AbstractCommand extends Command
     protected $config = [];
 
     /**
+     * System default locale.
+     *
+     * @var string
+     */
+    protected $default_locale;
+
+    /**
      * Should commands display something
      *
      * @var bool
@@ -31,6 +38,7 @@ abstract class AbstractCommand extends Command
     public function __construct()
     {
         $this->config = config('localization-helpers');
+        $this->default_locale = config('app.locale');
 
         parent::__construct();
     }
@@ -38,46 +46,21 @@ abstract class AbstractCommand extends Command
     /**
      * Get the lang directory path
      *
-     * @param  string $path
-     *
      * @return string
      */
-    protected function getLangPath($path = null)
+    protected function getLangPath()
     {
-        $lang_folder_path = $this->config('lang_folder_path', null);
+        $lang_folder_path = $this->config('lang_folder_path') ?: base_path('resources/lang');
 
-        if (empty($lang_folder_path)) {
-            $directories = [
-                app_path() . DIRECTORY_SEPARATOR . 'lang',
-                base_path() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'lang',
-            ];
-
-            foreach ($directories as $directory) {
-                if (file_exists($directory)) {
-                    return $directory . ($path ? DIRECTORY_SEPARATOR . $path : $path);
-                }
-            }
-
-            $this->error("No lang folder found in these paths:");
-
-            foreach ($directories as $directory) {
-                $this->error("- " . $directory);
-            }
-
-            $this->line('');
-
-            die();
+        // Check path
+        if (file_exists($lang_folder_path)) {
+            return $lang_folder_path;
         }
-        else {
-            if (file_exists($lang_folder_path)) {
-                return $lang_folder_path;
-            }
 
-            $this->error("No lang folder found in your custom path: \"{$lang_folder_path}\"");
-            $this->line('');
+        $this->error("No lang folder found in your custom path: \"{$lang_folder_path}\"");
+        $this->line('');
 
-            die();
-        }
+        die();
     }
 
     /**
