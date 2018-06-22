@@ -1,7 +1,7 @@
 {
   "name": "torann/localization-helpers",
   "description": "An artisan command package for easy translation management.",
-  "keywords": ["laravel", "translation", "helpers", "import", "export", "CSV"],
+  "keywords": ["laravel", "translation", "helpers", "import", "export", "CSV", "onesky"],
   "license": "BSD-2-Clause",
   "authors": [
     {
