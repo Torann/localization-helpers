@@ -6,6 +6,9 @@ use Illuminate\Support\Arr;
 
 class LocalizationMissing extends AbstractCommand
 {
+    /**
+     * Error constants for CLI
+     */
     const SUCCESS = 0;
     const ERROR = 1;
 
@@ -17,7 +20,6 @@ class LocalizationMissing extends AbstractCommand
     protected $signature = 'localization:missing
                                 {--f|force : Force file rewrite even if there is nothing to do}
                                 {--l|new-value=%LEMMA : Value of new found lemmas (use %LEMMA for the lemma value)}
-                                {--b|backup : Backup lang file.}
                                 {--d|dirty : Only return the exit code (use $? in shell to know whether there are missing lemma)}';
 
     /**
@@ -27,6 +29,33 @@ class LocalizationMissing extends AbstractCommand
      */
     protected $description = 'Parse all translations in app directory and build all lang files.';
 
+    /**
+     * Job process queue.
+     *
+     * @var array
+     */
+    protected $jobs = [];
+
+    /**
+     * Final lemmas used for storing.
+     *
+     * @var array
+     */
+    protected $final_lemmas = [];
+
+    /**
+     * The language file is out of date.
+     *
+     * @var bool
+     */
+    protected $is_dirty = false;
+
+    /**
+     * Has new unsaved lemmas.
+     *
+     * @var bool
+     */
+    protected $has_new = false;
 
     /**
      * Execute the console command.
@@ -35,242 +64,331 @@ class LocalizationMissing extends AbstractCommand
      */
     public function handle()
     {
+        // Should commands display something
         $this->display = !$this->option('dirty');
 
-        $lemmas = $this->getLemmas();
-
-        /////////////////////////////////////////////
-        // Convert dot lemmas to structured lemmas //
-        /////////////////////////////////////////////
-        $lemmas_structured = [];
-
-        foreach ($lemmas as $key => $value) {
-            if (strpos($key, '.') === false) {
-                $this->line('    <error>' . $key . '</error> in file <comment>' . $this->getShortPath($value) . '</comment> <error>will not be included because it has no parent</error>');
-            }
-            else {
-                Arr::set(
-                    $lemmas_structured,
-                    $this->encodeKey($key),
-                    $value
-                );
-            }
-        }
+        // Get all lemmas in a structured array
+        $lemmas_structured = $this->getLemmasStructured();
 
         $this->line('');
-
-        /////////////////////////////////////
-        // Generate lang files :           //
-        // - add missing lemmas on top     //
-        // - keep already defined lemmas   //
-        // - add obsolete lemmas on bottom //
-        /////////////////////////////////////
-        $dir_lang = $this->getLangPath();
-        $job = [];
-        $there_are_new = false;
-
         $this->line('Scan files:');
-        foreach (scandir($dir_lang) as $lang) {
-            if (!in_array($lang, [".", ".."])) {
-                if (is_dir($dir_lang . DIRECTORY_SEPARATOR . $lang)) {
-                    foreach ($lemmas_structured as $family => $array) {
-                        if (in_array($family, $this->config('ignore_lang_files', []))) {
-                            if ($this->option('verbose')) {
-                                $this->line('');
-                                $this->info("    ! Skip lang file '{$family}' !");
-                            }
 
-                            continue;
-                        }
-
-                        $file_lang_path = $dir_lang . DIRECTORY_SEPARATOR . $lang . DIRECTORY_SEPARATOR . $family . '.php';
-
-                        if ($this->option('verbose')) {
-                            $this->line('');
-                        }
-
-                        $this->line('    ' . $this->getShortPath($file_lang_path));
-
-                        $old_lemmas = $this->getOldLemmas($file_lang_path);
-
-                        $new_lemmas = Arr::dot($array);
-                        $final_lemmas = [];
-                        $something_to_do = false;
-
-                        $obsolete_lemmas = array_diff_key($old_lemmas, $new_lemmas);
-                        $welcome_lemmas = array_diff_key($new_lemmas, $old_lemmas);
-                        $already_lemmas = array_intersect_key($old_lemmas, $new_lemmas);
-
-                        ksort($obsolete_lemmas);
-                        ksort($welcome_lemmas);
-                        ksort($already_lemmas);
-
-                        //////////////////////////
-                        // Deal with new lemmas //
-                        //////////////////////////
-                        if (count($welcome_lemmas) > 0) {
-                            $something_to_do = true;
-                            $there_are_new = true;
-                            $this->info("    " . count($welcome_lemmas) . " new strings to translate");
-
-                            foreach ($welcome_lemmas as $key => $path) {
-                                $value = $this->decodeKey($key);
-
-                                if ($this->option('verbose')) {
-                                    $this->line("        <info>{$key}</info> in " . $this->getShortPath($path));
-                                }
-
-                                Arr::set($final_lemmas,
-                                    $key,
-                                    str_replace('%LEMMA', $value, $this->option('new-value'))
-                                );
-                            }
-                        }
-
-                        ///////////////////////////////
-                        // Deal with existing lemmas //
-                        ///////////////////////////////
-                        if (count($already_lemmas) > 0) {
-                            if ($this->option('verbose')) {
-                                $this->line("            " . count($already_lemmas) . " already translated strings");
-                            }
-
-                            foreach ($already_lemmas as $key => $value) {
-                                Arr::set(
-                                    $final_lemmas,
-                                    $key,
-                                    $value
-                                );
-                            }
-                        }
-
-                        ///////////////////////////////
-                        // Deal with obsolete lemmas //
-                        ///////////////////////////////
-                        if (count($obsolete_lemmas) > 0) {
-                            // Remove all dynamic fields
-                            foreach ($obsolete_lemmas as $key => $value) {
-                                $id = $this->decodeKey($key);
-
-                                foreach ($this->config('never_obsolete_keys', []) as $remove) {
-                                    $remove = "{$remove}.";
-
-                                    if (substr($id, 0, strlen($remove)) === $remove
-                                        || strpos($id, ".{$remove}") !== false
-                                    ) {
-
-                                        Arr::set($final_lemmas,
-                                            $key,
-                                            str_replace('%LEMMA', $value, $this->option('new-value'))
-                                        );
-
-                                        unset($obsolete_lemmas[$key]);
-                                    }
-                                }
-                            }
-                        }
-
-                        if (count($obsolete_lemmas) > 0) {
-                            $something_to_do = true;
-
-                            $this->comment("    " . count($obsolete_lemmas) . " obsolete strings (will be deleted)");
-                            if ($this->option('verbose')) {
-                                foreach ($obsolete_lemmas as $key => $value) {
-                                    $this->line("            <comment>" . $this->decodeKey($key) . "</comment>");
-                                }
-                            }
-                        }
-
-                        if (($something_to_do === true) || ($this->option('force'))) {
-                            // Sort final lemmas array by key
-                            ksort($final_lemmas);
-
-                            // Create a dumpy-dump
-                            $content = var_export($final_lemmas, true);
-
-                            // Decode all keys
-                            $content = $this->decodeKey($content);
-
-                            $job[$file_lang_path] = "<?php\n\nreturn {$content};";
-                        }
-                        else {
-                            if ($this->option('verbose')) {
-                                $this->line("        > <comment>Nothing to do for this file</comment>");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        ///////////////////////////////////////////
-        // Dirty mode                           //
-        ///////////////////////////////////////////
-        if ($this->option('dirty')) {
-            return $there_are_new ? self::ERROR : self::SUCCESS;
-        }
-
-        ///////////////////////////////////////////
-        // Normal mode                           //
-        ///////////////////////////////////////////
-        if (count($job) > 0) {
-            $this->line('');
-            $do = ($this->ask('Do you wish to apply these changes now? [yes|no]') === 'yes');
-            $this->line('');
-
-            if ($do === true) {
-                if ($this->option('backup')) {
-                    $this->line('Backup files:');
-
-                    foreach ($job as $file_lang_path => $file_content) {
-                        $backup_path = preg_replace('/\..+$/', '.' . date("Ymd_His") . '.php', $file_lang_path);
-
-                        rename($file_lang_path, $backup_path);
-
-                        $this->line("    <info>" . $this->getShortPath($file_lang_path)
-                            . "</info> -> <info>" . $this->getShortPath($backup_path) . "</info>");
-                    }
-
+        foreach ($this->getLanguages() as $lang => $lang_path) {
+            foreach ($lemmas_structured as $family => $array) {
+                if ($this->option('verbose')) {
                     $this->line('');
                 }
 
-                $this->line('Save files:');
+                // Set path to family file
+                $file_lang_path = "{$lang_path}/{$family}.php";
 
-                foreach ($job as $file_lang_path => $file_content) {
-                    file_put_contents($file_lang_path, $file_content);
-                    $this->line("    <info>" . $this->getShortPath($file_lang_path));
+                $this->line('    ' . $this->getShortPath($file_lang_path));
+
+                // Get existing and new lemmas
+                $old_lemmas = $this->getOldLemmas($file_lang_path);
+                $new_lemmas = Arr::dot($array);
+
+                // Reset the final lemma array
+                $this->final_lemmas = [];
+                $this->is_dirty = false;
+
+                // Lemma processing
+                $this->processNewLemmas($family, $new_lemmas, $old_lemmas);
+                $this->processExistingLemmas($family, $old_lemmas, $new_lemmas);
+                $this->processObsoleteLemmas($family, $old_lemmas, $new_lemmas);
+
+                if ($this->is_dirty === true || $this->option('force')) {
+                    // Sort final lemmas array by key
+                    ksort($this->final_lemmas);
+
+                    // Create a dumpy-dump
+                    $content = var_export($this->final_lemmas, true);
+
+                    // Decode all keys
+                    $content = $this->decodeKey($content);
+
+                    $this->jobs[$file_lang_path] = "<?php\n\nreturn {$content};";
                 }
-
-                $this->line('');
-
-                $this->info('Process done!');
-            }
-            else {
-                $this->line('');
-                $this->comment('Process aborted. No file have been changed.');
+                else {
+                    if ($this->option('verbose')) {
+                        $this->line("        > <comment>Nothing to do for this file</comment>");
+                    }
+                }
             }
         }
-        else {
-            $this->line('');
-            $this->info('All translations are up to date.');
+
+        // For dirty mode, all the user wants is a return value from the
+        // command. This is usually used for continuous integration.
+        if ($this->option('dirty')) {
+            return $this->has_new ? self::ERROR : self::SUCCESS;
         }
 
-        $this->line('');
+        // Save all lemmas
+        $this->saveChanges();
 
         return self::SUCCESS;
     }
 
     /**
-     * Determine if the given string is meant to be a
-     * multidimensional array.
+     * Save all changes made to the lemmas.
      *
-     * @param string $string
+     * @return void
+     */
+    protected function saveChanges()
+    {
+        $this->line('');
+
+        if (count($this->jobs) > 0) {
+            $do = ($this->ask('Do you wish to apply these changes now? [yes|no]') === 'yes');
+
+            if ($do === true) {
+                $this->line('');
+                $this->line('Save files:');
+
+                foreach ($this->jobs as $file_lang_path => $file_content) {
+                    file_put_contents($file_lang_path, $file_content);
+                    $this->line("    <info>" . $this->getShortPath($file_lang_path));
+                }
+
+                $this->line('');
+                $this->info('Process done!');
+            }
+            else {
+                $this->comment('Process aborted. No file have been changed.');
+            }
+        }
+        else {
+            if ($this->has_new && ($this->is_dirty === true || $this->option('force')) === false) {
+                $this->comment('Not all translations are up to date.');
+            }
+            else {
+                $this->info('All translations are up to date.');
+            }
+        }
+
+        $this->line('');
+    }
+
+    /**
+     * Process obsolete lemmas.
+     *
+     * @param string $family
+     * @param array  $old_lemmas
+     * @param array  $new_lemmas
      *
      * @return bool
      */
-    protected function isMultidimensional($string)
+    protected function processObsoleteLemmas($family, array $old_lemmas = [], array $new_lemmas = [])
     {
-        return str_contains($this->encodeKey($string), '.');
+        // Get obsolete lemmas
+        $lemmas = array_diff_key($old_lemmas, $new_lemmas);
+
+        // Process all of the obsolete lemmas
+        if (count($lemmas) > 0) {
+            // Sort lemmas by key
+            ksort($lemmas);
+
+            // Remove all dynamic fields
+            foreach ($lemmas as $key => $value) {
+                $id = $this->decodeKey($key);
+
+                // Remove any keys that can never be obsolete
+                if ($this->neverObsolete($id)) {
+                    Arr::set($this->final_lemmas,
+                        $key, str_replace('%LEMMA', $value, $this->option('new-value'))
+                    );
+
+                    unset($lemmas[$key]);
+                }
+            }
+        }
+
+        // Check for obsolete lemmas
+        if (count($lemmas) > 0) {
+            $this->is_dirty = true;
+
+            $this->comment("    " . count($lemmas) . " obsolete strings (will be deleted)");
+
+            if ($this->option('verbose')) {
+                foreach ($lemmas as $key => $value) {
+                    $this->line("            <comment>" . $this->decodeKey($key) . "</comment>");
+                }
+            }
+        }
+    }
+
+    /**
+     * Process existing lemmas.
+     *
+     * @param string $family
+     * @param array  $old_lemmas
+     * @param array  $new_lemmas
+     *
+     * @return bool
+     */
+    protected function processExistingLemmas($family, array $old_lemmas = [], array $new_lemmas = [])
+    {
+        // Get existing lemmas
+        $lemmas = array_intersect_key($old_lemmas, $new_lemmas);
+
+        if (count($lemmas) > 0) {
+            // Sort lemmas by key
+            ksort($lemmas);
+
+            if ($this->option('verbose')) {
+                $this->line("            " . count($lemmas) . " already translated strings");
+            }
+
+            foreach ($lemmas as $key => $value) {
+                Arr::set(
+                    $this->final_lemmas, $key, $value
+                );
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Process new lemmas.
+     *
+     * @param string $family
+     * @param array  $new_lemmas
+     * @param array  $old_lemmas
+     *
+     * @return bool
+     */
+    protected function processNewLemmas($family, array $new_lemmas = [], array $old_lemmas = [])
+    {
+        // Get new lemmas
+        $lemmas = array_diff_key($new_lemmas, $old_lemmas);
+
+        // Remove any never obsolete values
+        $lemmas = array_filter($lemmas, function($key) {
+            if ($this->neverObsolete($key)) {
+                $this->line("        <comment>Manually add:</comment> <info>{$key}</info>");
+                $this->has_new = true;
+                return false;
+            }
+
+            return true;
+        }, ARRAY_FILTER_USE_KEY);
+
+        // Process new lemmas
+        if (count($lemmas) > 0) {
+            $this->is_dirty = true;
+            $this->has_new = true;
+
+            // Sort lemmas by key
+            ksort($lemmas);
+
+            $this->info("    " . count($lemmas) . " new strings to translate");
+
+            foreach ($lemmas as $key => $path) {
+                $value = $this->decodeKey($key);
+
+                if ($this->option('verbose')) {
+                    $this->line("        <info>{$key}</info> in " . $this->getShortPath($path));
+                }
+
+                Arr::set($this->final_lemmas,
+                    $key, str_replace('%LEMMA', $value, $this->option('new-value'))
+                );
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get all languages and their's paths.
+     *
+     * @param array $paths
+     *
+     * @return array
+     */
+    protected function getLanguages(array $paths = [])
+    {
+        // Get language path
+        $dir_lang = $this->getLangPath();
+
+        // Only use the default locale
+        if ($this->config('default_locale_only')) {
+            return [
+                $this->default_locale => "{$dir_lang}/{$this->default_locale}",
+            ];
+        }
+
+        // Get all language paths
+        foreach (glob("{$dir_lang}/*", GLOB_ONLYDIR) as $path) {
+            $paths[basename($path)] = $path;
+        }
+
+        return $paths;
+    }
+
+    /**
+     * Check key to ensure it isn't a never obsolete key.
+     *
+     * @param string $value
+     *
+     * @return bool
+     */
+    protected function neverObsolete($value)
+    {
+        // Remove any keys that can never be obsolete
+        foreach ($this->config('never_obsolete_keys', []) as $remove) {
+            $remove = "{$remove}.";
+
+            if (substr($value, 0, strlen($remove)) === $remove
+                || strpos($value, ".{$remove}") !== false
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Convert dot lemmas to structured lemmas.
+     *
+     * @param array $structured
+     *
+     * @return array
+     */
+    protected function getLemmasStructured(array $structured = [])
+    {
+        foreach ($this->getLemmas() as $key => $value) {
+            // Get the lemma family
+            $family = substr($key, 0, strpos($key, '.'));
+
+            // Check key against the ignore list
+            if (in_array($family, $this->config('ignore_lang_files', []))) {
+                if ($this->option('verbose')) {
+                    $this->line('');
+                    $this->info("    ! Skip lang file '{$family}' !");
+                }
+
+                continue;
+            }
+
+            // Sanity check
+            if (strpos($key, '.') === false) {
+                $this->line('    <error>' . $key . '</error> in file <comment>' . $this->getShortPath($value) . '</comment> <error>will not be included because it has no parent</error>');
+            }
+            else {
+                Arr::set(
+                    $structured, $this->encodeKey($key), $value
+                );
+            }
+        }
+
+        return $structured;
     }
 
     /**

@@ -137,4 +137,18 @@ return [
 
     'export_path' => storage_path('localization/export'),
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Only Process the System Locale
+    |--------------------------------------------------------------------------
+    |
+    | Sometimes all we'll need to do is process application's default locale
+    | because all foreign languages are managed by a third-party site and
+    | imported, or in some other method.
+    |
+    */
+
+    'default_locale_only' => false,
+
 ];
