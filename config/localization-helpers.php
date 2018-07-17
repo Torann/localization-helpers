@@ -151,4 +151,16 @@ return [
 
     'default_locale_only' => false,
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Use Array Short Syntax
+    |--------------------------------------------------------------------------
+    |
+    | For a more modern and cleaner code enable array short syntax.
+    |
+    */
+
+    'array_shorthand' => true,
+
 ];

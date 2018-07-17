@@ -4,7 +4,7 @@ namespace Torann\LocalizationHelpers\Commands;
 
 use Illuminate\Support\Arr;
 
-class LocalizationMissing extends AbstractCommand
+class MissingCommand extends AbstractCommand
 {
     /**
      * Error constants for CLI
@@ -107,7 +107,7 @@ class LocalizationMissing extends AbstractCommand
                     // Decode all keys
                     $content = $this->decodeKey($content);
 
-                    $this->jobs[$file_lang_path] = "<?php\n\nreturn {$content};";
+                    $this->jobs[$file_lang_path] = $this->dumpLangArray("<?php\n\nreturn {$content};");
                 }
                 else {
                     if ($this->option('verbose')) {
@@ -266,10 +266,11 @@ class LocalizationMissing extends AbstractCommand
         $lemmas = array_diff_key($new_lemmas, $old_lemmas);
 
         // Remove any never obsolete values
-        $lemmas = array_filter($lemmas, function($key) {
+        $lemmas = array_filter($lemmas, function ($key) {
             if ($this->neverObsolete($key)) {
                 $this->line("        <comment>Manually add:</comment> <info>{$key}</info>");
                 $this->has_new = true;
+
                 return false;
             }
 
@@ -499,5 +500,58 @@ class LocalizationMissing extends AbstractCommand
         }
 
         return $values;
+    }
+
+    /**
+     * Convert the arrays to the shorthand syntax.
+     *
+     * @param string $source
+     * @param string $code
+     *
+     * @return string
+     */
+    protected function dumpLangArray($source, $code = '')
+    {
+        // Use array short syntax
+        if ($this->config('array_shorthand', true) === false) {
+            return $source;
+        }
+
+        // Split given source into PHP tokens
+        $tokens = token_get_all($source);
+
+        $brackets = [];
+
+        for ($i = 0; $i < count($tokens); $i++) {
+            $token = $tokens[$i];
+
+            if ($token === '(') {
+                $brackets[] = false;
+            }
+            elseif ($token === ')') {
+                $token = array_pop($brackets) ? ']' : ')';
+            }
+            elseif (is_array($token) && $token[0] === T_ARRAY) {
+                $a = $i + 1;
+                if (isset($tokens[$a]) && $tokens[$a][0] === T_WHITESPACE) {
+                    $a++;
+                }
+                if (isset($tokens[$a]) && $tokens[$a] === '(') {
+                    $i = $a;
+                    $brackets[] = true;
+                    $token = '[';
+                }
+            }
+
+            $code .= is_array($token) ? $token[1] : $token;
+        }
+
+        // Fix indenting
+        $code = preg_replace('/^  |\G  /m', '    ', $code);
+
+        // Fix weird new line breaks at the beginning of arrays
+        $code = preg_replace('/=\>\s\n\s{4,}\[/m', '=> [', $code);
+
+        return $code;
     }
 }
