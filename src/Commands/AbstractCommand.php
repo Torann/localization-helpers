@@ -246,7 +246,7 @@ abstract class AbstractCommand extends Command
      */
     protected function encodeKey($string)
     {
-        return preg_replace_callback('/(\.\s|\.$)/', function ($matches) {
+        return preg_replace_callback('/(\.\s|\.\||\.$)/', function ($matches) {
             return str_replace('.', '&#46;', $matches[0]);
         }, $string);
     }
