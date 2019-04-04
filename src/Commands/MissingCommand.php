@@ -102,12 +102,7 @@ class MissingCommand extends AbstractCommand
                     ksort($this->final_lemmas);
 
                     // Create a dumpy-dump
-                    $content = var_export($this->final_lemmas, true);
-
-                    // Decode all keys
-                    $content = $this->decodeKey($content);
-
-                    $this->jobs[$file_lang_path] = $this->dumpLangArray("<?php\n\nreturn {$content};");
+                    $this->jobs[$file_lang_path] = $this->dumpLemmas($this->final_lemmas);
                 }
                 else {
                     if ($this->option('verbose')) {
@@ -127,6 +122,24 @@ class MissingCommand extends AbstractCommand
         $this->saveChanges();
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Dump the final lemmas into a string for storing in a PHP file.
+     *
+     * @param array $lemmas
+     *
+     * @return string
+     */
+    protected function dumpLemmas(array $lemmas)
+    {
+        // Create a dumpy-dump
+        $content = var_export($lemmas, true);
+
+        // Decode all keys
+        $content = $this->decodeKey($content);
+
+        return $this->dumpLangArray("<?php\n\nreturn {$content};");
     }
 
     /**
