@@ -2,6 +2,7 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
+use Illuminate\Support\Str;
 use Illuminate\Support\Arr;
 
 class MissingCommand extends AbstractCommand
@@ -58,12 +59,23 @@ class MissingCommand extends AbstractCommand
     protected $has_new = false;
 
     /**
+     * Obsolete regex string.
+     *
+     * @var string
+     */
+    protected $obsolete_regex;
+
+    /**
      * Execute the console command.
      *
      * @return boolean
      */
     public function handle()
     {
+        $this->obsolete_regex = implode('|', array_map(function($key) {
+            return preg_quote($key, '/');
+        }, $this->config('never_obsolete_keys', [])));
+
         // Should commands display something
         $this->display = !$this->option('dirty');
 
@@ -152,7 +164,11 @@ class MissingCommand extends AbstractCommand
         $this->line('');
 
         if (count($this->jobs) > 0) {
-            $do = ($this->ask('Do you wish to apply these changes now? [yes|no]') === 'yes');
+            $do = true;
+
+            if ($this->config('ask_for_value') === false) {
+                $do = ($this->ask('Do you wish to apply these changes now? [yes|no]') === 'yes');
+            }
 
             if ($do === true) {
                 $this->line('');
@@ -279,16 +295,18 @@ class MissingCommand extends AbstractCommand
         $lemmas = array_diff_key($new_lemmas, $old_lemmas);
 
         // Remove any never obsolete values
-        $lemmas = array_filter($lemmas, function ($key) {
-            if ($this->neverObsolete($key)) {
-                $this->line("        <comment>Manually add:</comment> <info>{$key}</info>");
-                $this->has_new = true;
+        if ($this->config('ask_for_value') === false) {
+            $lemmas = array_filter($lemmas, function ($key) {
+                if ($this->neverObsolete($key)) {
+                    $this->line("        <comment>Manually add:</comment> <info>{$key}</info>");
+                    $this->has_new = true;
 
-                return false;
-            }
+                    return false;
+                }
 
-            return true;
-        }, ARRAY_FILTER_USE_KEY);
+                return true;
+            }, ARRAY_FILTER_USE_KEY);
+        }
 
         // Process new lemmas
         if (count($lemmas) > 0) {
@@ -302,6 +320,13 @@ class MissingCommand extends AbstractCommand
 
             foreach ($lemmas as $key => $path) {
                 $value = $this->decodeKey($key);
+
+                // Only ask for feedback when it's not a dirty check
+                if ($this->option('dirty') === false && $this->config('ask_for_value') === true) {
+                    $value = $this->ask(
+                        "{$family}.{$value}", $this->createSuggestion($value)
+                    );
+                }
 
                 if ($this->option('verbose')) {
                     $this->line("        <info>{$key}</info> in " . $this->getShortPath($path));
@@ -343,6 +368,23 @@ class MissingCommand extends AbstractCommand
         }
 
         return $paths;
+    }
+
+    /**
+     * Create a key value suggestion.
+     *
+     * @param string $value
+     *
+     * @return string
+     */
+    protected function createSuggestion($value)
+    {
+        // Strip the obsolete regex keys
+        if (empty($this->obsolete_regex) === false) {
+            $value = preg_replace("/^({$this->obsolete_regex})\./i", '', $value);
+        }
+
+        return Str::title(str_replace('_', ' ', $value));
     }
 
     /**
