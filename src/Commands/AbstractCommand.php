@@ -264,6 +264,59 @@ abstract class AbstractCommand extends Command
     }
 
     /**
+     * Convert the arrays to the shorthand syntax.
+     *
+     * @param string $source
+     * @param string $code
+     *
+     * @return string
+     */
+    protected function dumpLangArray($source, $code = '')
+    {
+        // Use array short syntax
+        if ($this->config('array_shorthand', true) === false) {
+            return $source;
+        }
+
+        // Split given source into PHP tokens
+        $tokens = token_get_all($source);
+
+        $brackets = [];
+
+        for ($i = 0; $i < count($tokens); $i++) {
+            $token = $tokens[$i];
+
+            if ($token === '(') {
+                $brackets[] = false;
+            }
+            elseif ($token === ')') {
+                $token = array_pop($brackets) ? ']' : ')';
+            }
+            elseif (is_array($token) && $token[0] === T_ARRAY) {
+                $a = $i + 1;
+                if (isset($tokens[$a]) && $tokens[$a][0] === T_WHITESPACE) {
+                    $a++;
+                }
+                if (isset($tokens[$a]) && $tokens[$a] === '(') {
+                    $i = $a;
+                    $brackets[] = true;
+                    $token = '[';
+                }
+            }
+
+            $code .= is_array($token) ? $token[1] : $token;
+        }
+
+        // Fix indenting
+        $code = preg_replace('/^  |\G  /m', '    ', $code);
+
+        // Fix weird new line breaks at the beginning of arrays
+        $code = preg_replace('/=\>\s\n\s{4,}\[/m', '=> [', $code);
+
+        return $code;
+    }
+
+    /**
      * Get configuration value.
      *
      * @param string $key

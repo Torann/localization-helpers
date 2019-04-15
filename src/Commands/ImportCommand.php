@@ -122,7 +122,7 @@ class ImportCommand extends AbstractCommand
         }
 
         // Get the language file path
-        $language_file = $this->getLangPath("{$locale}/{$group}.php");
+        $language_file = $this->getLangPath() . "/{$locale}/{$group}.php";
 
         // Sanity check for new language files
         $this->ensureFileExists($language_file);
@@ -135,7 +135,7 @@ class ImportCommand extends AbstractCommand
             // Decode all keys
             $content = $this->decodeKey($content);
 
-            fputs($fp, "<?php\n\nreturn {$content};");
+            fputs($fp, $this->dumpLangArray("<?php\n\nreturn {$content};"));
             fclose($fp);
         }
         else {
