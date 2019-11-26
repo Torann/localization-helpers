@@ -2,6 +2,7 @@
 
 namespace Torann\LocalizationHelpers;
 
+use Illuminate\Support\Str;
 use Illuminate\Support\ServiceProvider;
 
 class LocalizationHelpersServiceProvider extends ServiceProvider
@@ -49,6 +50,6 @@ class LocalizationHelpersServiceProvider extends ServiceProvider
      */
     protected function isLumen()
     {
-        return str_contains($this->app->version(), 'Lumen') === true;
+        return Str::contains($this->app->version(), 'Lumen') === true;
     }
 }

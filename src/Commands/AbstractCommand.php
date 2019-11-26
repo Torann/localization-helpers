@@ -218,7 +218,7 @@ abstract class AbstractCommand extends Command
         $result = [];
         $string = file_get_contents($path);
 
-        foreach (array_flatten($this->config('trans_methods', [])) as $method) {
+        foreach (Arr::flatten($this->config('trans_methods', [])) as $method) {
             preg_match_all($method, $string, $matches);
 
             foreach ($matches[1] as $k => $v) {

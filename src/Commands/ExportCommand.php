@@ -39,7 +39,7 @@ class ExportCommand extends AbstractCommand
     {
         parent::__construct();
 
-        $this->export_path = array_get($this->config, 'export_path');
+        $this->export_path = Arr::get($this->config, 'export_path');
     }
 
     /**

@@ -41,7 +41,7 @@ class ImportCommand extends AbstractCommand
     {
         parent::__construct();
 
-        $this->import_path = array_get($this->config, 'import_path');
+        $this->import_path = Arr::get($this->config, 'import_path');
     }
 
     /**
