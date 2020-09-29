@@ -1,4 +1,4 @@
-# Localization Helpers for Laravel 5
+# Localization Helpers for Laravel
 
 [![Latest Stable Version](https://poser.pugx.org/torann/localization-helpers/v/stable.png)](https://packagist.org/packages/torann/localization-helpers)
 [![Total Downloads](https://poser.pugx.org/torann/localization-helpers/downloads.png)](https://packagist.org/packages/torann/localization-helpers)
