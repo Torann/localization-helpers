@@ -72,7 +72,7 @@ class MissingCommand extends AbstractCommand
      */
     public function handle()
     {
-        $this->obsolete_regex = implode('|', array_map(function($key) {
+        $this->obsolete_regex = implode('|', array_map(function ($key) {
             return preg_quote($key, '/');
         }, $this->config('never_obsolete_keys', [])));
 
@@ -223,7 +223,8 @@ class MissingCommand extends AbstractCommand
 
                 // Remove any keys that can never be obsolete
                 if ($this->neverObsolete($id)) {
-                    Arr::set($this->final_lemmas,
+                    Arr::set(
+                        $this->final_lemmas,
                         $key, str_replace('%LEMMA', $value, $this->option('new-value'))
                     );
 
@@ -332,7 +333,8 @@ class MissingCommand extends AbstractCommand
                     $this->line("        <info>{$key}</info> in " . $this->getShortPath($path));
                 }
 
-                Arr::set($this->final_lemmas,
+                Arr::set(
+                    $this->final_lemmas,
                     $key, str_replace('%LEMMA', $value, $this->option('new-value'))
                 );
             }

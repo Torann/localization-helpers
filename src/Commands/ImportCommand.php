@@ -77,7 +77,7 @@ class ImportCommand extends AbstractCommand
      * @param string $enclosure
      * @param string $escape
      */
-    protected function import($locale, $group, $delimiter = ',', $enclosure ='"', $escape = '\\')
+    protected function import($locale, $group, $delimiter = ',', $enclosure = '"', $escape = '\\')
     {
         // Create output device and write CSV.
         if (($input_fp = fopen("{$this->import_path}/{$group}.csv", 'r')) === false) {
@@ -128,7 +128,6 @@ class ImportCommand extends AbstractCommand
         $this->ensureFileExists($language_file);
 
         if (is_writable($language_file) && ($fp = fopen($language_file, 'w')) !== false) {
-
             // Export values
             $content = var_export($translations[$group], true);
 
@@ -151,7 +150,6 @@ class ImportCommand extends AbstractCommand
     protected function ensureFileExists($path)
     {
         if (file_exists($path) === false) {
-
             // Create directory
             @mkdir(dirname($path), 0777, true);
 

@@ -78,7 +78,7 @@ class ExportCommand extends AbstractCommand
      * @param string $delimiter
      * @param string $enclosure
      */
-    protected function createExport($locale, $group, $delimiter = ',', $enclosure ='"')
+    protected function createExport($locale, $group, $delimiter = ',', $enclosure = '"')
     {
         $strings = $this->loadLangList($locale, $group);
 
