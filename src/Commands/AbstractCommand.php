@@ -2,73 +2,60 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
-use RegexIterator;
 use Illuminate\Support\Arr;
-use RecursiveRegexIterator;
-use RecursiveIteratorIterator;
-use RecursiveDirectoryIterator;
 use Illuminate\Console\Command;
+use Torann\LocalizationHelpers\Contracts\Client;
 
 abstract class AbstractCommand extends Command
 {
-    /**
-     * Configuration.
-     *
-     * @var array
-     */
-    protected $config = [];
-
-    /**
-     * System default locale.
-     *
-     * @var string
-     */
-    protected $default_locale;
-
-    /**
-     * Should commands display something
-     *
-     * @var bool
-     */
-    protected $display = true;
+    protected string $default_locale;
+    protected bool $display = true;
+    protected array $config = [];
 
     /**
      * Create a new command instance.
      */
     public function __construct()
     {
-        $this->config = config('localization-helpers');
-        $this->default_locale = config('app.locale');
+        $this->config = (array) config('localization-helpers', []);
+        $this->default_locale = (string) config('app.locale');
 
         parent::__construct();
     }
 
     /**
-     * Get the lang directory path
+     * Display messages from the client in the console
      *
-     * @return string
+     * @param Client          $client
+     * @param string|null     $style
+     * @param null|int|string $verbosity
+     *
+     * @return  void
      */
-    protected function getLangPath()
+    public function displayMessages(Client $client, string $style = null, $verbosity = null)
     {
-        $lang_folder_path = $this->config('lang_folder_path') ?: base_path('resources/lang');
-
-        // Check path
-        if (file_exists($lang_folder_path)) {
-            return $lang_folder_path;
+        if ($this->display) {
+            foreach ($client->getMessages('*') as $type => $messages) {
+                foreach ($messages as $message) {
+                    switch ($type) {
+                        case 'error':
+                            $this->error($message, $verbosity);
+                            break;
+                        default:
+                            $this->line($message, $style, $verbosity);
+                            break;
+                    }
+                }
+            }
         }
-
-        $this->error("No lang folder found in your custom path: \"{$lang_folder_path}\"");
-        $this->line('');
-
-        die();
     }
 
     /**
      * Display console message
      *
-     * @param  string          $string
-     * @param  string          $style
-     * @param  null|int|string $verbosity
+     * @param string          $string
+     * @param string          $style
+     * @param null|int|string $verbosity
      *
      * @return  void
      */
@@ -82,8 +69,8 @@ abstract class AbstractCommand extends Command
     /**
      * Display console message
      *
-     * @param  string          $string
-     * @param  null|int|string $verbosity
+     * @param string          $string
+     * @param null|int|string $verbosity
      *
      * @return  void
      */
@@ -97,8 +84,8 @@ abstract class AbstractCommand extends Command
     /**
      * Display console message
      *
-     * @param  string          $string
-     * @param  null|int|string $verbosity
+     * @param string          $string
+     * @param null|int|string $verbosity
      *
      * @return  void
      */
@@ -112,8 +99,8 @@ abstract class AbstractCommand extends Command
     /**
      * Display console message
      *
-     * @param  string          $string
-     * @param  null|int|string $verbosity
+     * @param string          $string
+     * @param null|int|string $verbosity
      *
      * @return  void
      */
@@ -127,8 +114,8 @@ abstract class AbstractCommand extends Command
     /**
      * Display console message
      *
-     * @param  string          $string
-     * @param  null|int|string $verbosity
+     * @param string          $string
+     * @param null|int|string $verbosity
      *
      * @return void
      */
@@ -139,183 +126,6 @@ abstract class AbstractCommand extends Command
         }
     }
 
-
-    /**
-     * Return an absolute path without predefined variables
-     *
-     * @param string $path the relative path
-     *
-     * @return string|array
-     */
-    protected function getPath($path)
-    {
-        return str_replace(
-            [
-                '%APP',
-                '%BASE',
-                '%PUBLIC',
-                '%STORAGE',
-            ],
-            [
-                app_path(),
-                base_path(),
-                public_path(),
-                storage_path(),
-            ],
-            $path
-        );
-    }
-
-    /**
-     * Return an relative path to the laravel directory
-     *
-     * @param string $path the absolute path
-     *
-     * @return string the relative path
-     */
-    protected function getShortPath($path)
-    {
-        return str_replace(base_path(), '', $path);
-    }
-
-    /**
-     * return an iterator of php files in the provided paths and subpaths
-     *
-     * @param string $path a source path
-     *
-     * @return array a list of php file paths
-     */
-    protected function getPhpFiles($path)
-    {
-        if (is_dir($path)) {
-            return new RegexIterator(
-                new RecursiveIteratorIterator(
-                    new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
-                    RecursiveIteratorIterator::SELF_FIRST,
-                    RecursiveIteratorIterator::CATCH_GET_CHILD // Ignore "Permission denied"
-                ),
-                '/^.+\.php$/i',
-                RecursiveRegexIterator::GET_MATCH
-            );
-        }
-        else {
-            return [];
-        }
-    }
-
-    /**
-     * Extract all translations from the provided file
-     * Remove all translations containing :
-     * - $  -> auto-generated translation cannot be supported
-     * - :: -> package translations are not taken in account
-     *
-     * @param string $path the file path
-     *
-     * @return array
-     */
-    protected function extractTranslationFromFile($path)
-    {
-        $result = [];
-        $string = file_get_contents($path);
-
-        foreach (Arr::flatten($this->config('trans_methods', [])) as $method) {
-            preg_match_all($method, $string, $matches);
-
-            foreach ($matches[1] as $k => $v) {
-                if (strpos($v, '$') !== false) {
-                    unset($matches[1][$k]);
-                }
-                if (strpos($v, '::') !== false) {
-                    unset($matches[1][$k]);
-                }
-            }
-
-            $result = array_merge($result, array_flip($matches[1]));
-        }
-
-        return $result;
-    }
-
-    /**
-     * Encode the key so that the array set function doesn't
-     * go crazy when it sets the values.
-     *
-     * @param string $string
-     *
-     * @return string
-     */
-    protected function encodeKey($string)
-    {
-        return preg_replace_callback('/(\.\s|\.\||\.$)/', function ($matches) {
-            return str_replace('.', '&#46;', $matches[0]);
-        }, $string);
-    }
-
-    /**
-     * Decode the key so it looks normal again.
-     *
-     * @param string $string
-     *
-     * @return string
-     */
-    protected function decodeKey($string)
-    {
-        return str_replace('&#46;', '.', $string);
-    }
-
-    /**
-     * Convert the arrays to the shorthand syntax.
-     *
-     * @param string $source
-     * @param string $code
-     *
-     * @return string
-     */
-    protected function dumpLangArray($source, $code = '')
-    {
-        // Use array short syntax
-        if ($this->config('array_shorthand', true) === false) {
-            return $source;
-        }
-
-        // Split given source into PHP tokens
-        $tokens = token_get_all($source);
-
-        $brackets = [];
-
-        for ($i = 0; $i < count($tokens); $i++) {
-            $token = $tokens[$i];
-
-            if ($token === '(') {
-                $brackets[] = false;
-            }
-            elseif ($token === ')') {
-                $token = array_pop($brackets) ? ']' : ')';
-            }
-            elseif (is_array($token) && $token[0] === T_ARRAY) {
-                $a = $i + 1;
-                if (isset($tokens[$a]) && $tokens[$a][0] === T_WHITESPACE) {
-                    $a++;
-                }
-                if (isset($tokens[$a]) && $tokens[$a] === '(') {
-                    $i = $a;
-                    $brackets[] = true;
-                    $token = '[';
-                }
-            }
-
-            $code .= is_array($token) ? $token[1] : $token;
-        }
-
-        // Fix indenting
-        $code = preg_replace('/^  |\G  /m', '    ', $code);
-
-        // Fix weird new line breaks at the beginning of arrays
-        $code = preg_replace('/=\>\s\n\s{4,}\[/m', '=> [', $code);
-
-        return $code;
-    }
-
     /**
      * Get configuration value.
      *
@@ -324,7 +134,7 @@ abstract class AbstractCommand extends Command
      *
      * @return mixed
      */
-    public function config($key, $default = null)
+    public function config(string $key, $default = null)
     {
         return Arr::get($this->config, $key, $default);
     }

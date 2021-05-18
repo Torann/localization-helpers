@@ -36,11 +36,25 @@ class LocalizationHelpersServiceProvider extends ServiceProvider
             ], 'config');
         }
 
+        $this->registerManager();
+
         $this->commands([
             Commands\MissingCommand::class,
             Commands\ExportCommand::class,
             Commands\ImportCommand::class,
         ]);
+    }
+
+    /**
+     * Register the filesystem manager.
+     *
+     * @return void
+     */
+    protected function registerManager()
+    {
+        $this->app->singleton(ClientManager::class, function ($app) {
+            return new ClientManager((array) $app['config']['localization-helpers']);
+        });
     }
 
     /**

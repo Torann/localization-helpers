@@ -2,16 +2,23 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
+use RegexIterator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Arr;
+use RecursiveRegexIterator;
+use RecursiveIteratorIterator;
+use RecursiveDirectoryIterator;
+use Torann\LocalizationHelpers\Concerns\MangeFiles;
 
 class MissingCommand extends AbstractCommand
 {
-    /**
-     * Error constants for CLI
-     */
-    const SUCCESS = 0;
-    const ERROR = 1;
+    use MangeFiles;
+
+    protected array $final_lemmas = [];
+    protected string $obsolete_regex;
+    protected bool $is_dirty = false;
+    protected bool $has_new = false;
+    protected array $jobs = [];
 
     /**
      * The name and signature of the console command.
@@ -31,44 +38,9 @@ class MissingCommand extends AbstractCommand
     protected $description = 'Parse all translations in app directory and build all lang files.';
 
     /**
-     * Job process queue.
-     *
-     * @var array
-     */
-    protected $jobs = [];
-
-    /**
-     * Final lemmas used for storing.
-     *
-     * @var array
-     */
-    protected $final_lemmas = [];
-
-    /**
-     * The language file is out of date.
-     *
-     * @var bool
-     */
-    protected $is_dirty = false;
-
-    /**
-     * Has new unsaved lemmas.
-     *
-     * @var bool
-     */
-    protected $has_new = false;
-
-    /**
-     * Obsolete regex string.
-     *
-     * @var string
-     */
-    protected $obsolete_regex;
-
-    /**
      * Execute the console command.
      *
-     * @return boolean
+     * @return int
      */
     public function handle()
     {
@@ -77,7 +49,7 @@ class MissingCommand extends AbstractCommand
         }, $this->config('never_obsolete_keys', [])));
 
         // Should commands display something
-        $this->display = !$this->option('dirty');
+        $this->display = $this->option('dirty') === false;
 
         // Get all lemmas in a structured array
         $lemmas_structured = $this->getLemmasStructured();
@@ -106,8 +78,8 @@ class MissingCommand extends AbstractCommand
 
                 // Lemma processing
                 $this->processNewLemmas($family, $new_lemmas, $old_lemmas);
-                $this->processExistingLemmas($family, $old_lemmas, $new_lemmas);
-                $this->processObsoleteLemmas($family, $old_lemmas, $new_lemmas);
+                $this->processExistingLemmas($old_lemmas, $new_lemmas);
+                $this->processObsoleteLemmas($old_lemmas, $new_lemmas);
 
                 if ($this->is_dirty === true || $this->option('force')) {
                     // Sort final lemmas array by key
@@ -115,8 +87,7 @@ class MissingCommand extends AbstractCommand
 
                     // Create a dumpy-dump
                     $this->jobs[$file_lang_path] = $this->dumpLemmas($this->final_lemmas);
-                }
-                else {
+                } else {
                     if ($this->option('verbose')) {
                         $this->line("        > <comment>Nothing to do for this file</comment>");
                     }
@@ -127,13 +98,13 @@ class MissingCommand extends AbstractCommand
         // For dirty mode, all the user wants is a return value from the
         // command. This is usually used for continuous integration.
         if ($this->option('dirty')) {
-            return $this->has_new ? self::ERROR : self::SUCCESS;
+            return $this->has_new ? 1 : 0;
         }
 
         // Save all lemmas
         $this->saveChanges();
 
-        return self::SUCCESS;
+        return 0;
     }
 
     /**
@@ -143,7 +114,7 @@ class MissingCommand extends AbstractCommand
      *
      * @return string
      */
-    protected function dumpLemmas(array $lemmas)
+    protected function dumpLemmas(array $lemmas): string
     {
         // Create a dumpy-dump
         $content = var_export($lemmas, true);
@@ -181,16 +152,13 @@ class MissingCommand extends AbstractCommand
 
                 $this->line('');
                 $this->info('Process done!');
-            }
-            else {
+            } else {
                 $this->comment('Process aborted. No file have been changed.');
             }
-        }
-        else {
+        } else {
             if ($this->has_new && ($this->is_dirty === true || $this->option('force')) === false) {
                 $this->comment('Not all translations are up to date.');
-            }
-            else {
+            } else {
                 $this->info('All translations are up to date.');
             }
         }
@@ -201,13 +169,12 @@ class MissingCommand extends AbstractCommand
     /**
      * Process obsolete lemmas.
      *
-     * @param string $family
-     * @param array  $old_lemmas
-     * @param array  $new_lemmas
+     * @param array $old_lemmas
+     * @param array $new_lemmas
      *
      * @return bool
      */
-    protected function processObsoleteLemmas($family, array $old_lemmas = [], array $new_lemmas = [])
+    protected function processObsoleteLemmas(array $old_lemmas = [], array $new_lemmas = []): bool
     {
         // Get obsolete lemmas
         $lemmas = array_diff_key($old_lemmas, $new_lemmas);
@@ -245,18 +212,19 @@ class MissingCommand extends AbstractCommand
                 }
             }
         }
+
+        return true;
     }
 
     /**
      * Process existing lemmas.
      *
-     * @param string $family
-     * @param array  $old_lemmas
-     * @param array  $new_lemmas
+     * @param array $old_lemmas
+     * @param array $new_lemmas
      *
      * @return bool
      */
-    protected function processExistingLemmas($family, array $old_lemmas = [], array $new_lemmas = [])
+    protected function processExistingLemmas(array $old_lemmas = [], array $new_lemmas = []): bool
     {
         // Get existing lemmas
         $lemmas = array_intersect_key($old_lemmas, $new_lemmas);
@@ -290,7 +258,7 @@ class MissingCommand extends AbstractCommand
      *
      * @return bool
      */
-    protected function processNewLemmas($family, array $new_lemmas = [], array $old_lemmas = [])
+    protected function processNewLemmas(string $family, array $new_lemmas = [], array $old_lemmas = []): bool
     {
         // Get new lemmas
         $lemmas = array_diff_key($new_lemmas, $old_lemmas);
@@ -346,13 +314,13 @@ class MissingCommand extends AbstractCommand
     }
 
     /**
-     * Get all languages and their's paths.
+     * Get all languages and their paths.
      *
      * @param array $paths
      *
      * @return array
      */
-    protected function getLanguages(array $paths = [])
+    protected function getLanguages(array $paths = []): array
     {
         // Get language path
         $dir_lang = $this->getLangPath();
@@ -379,7 +347,7 @@ class MissingCommand extends AbstractCommand
      *
      * @return string
      */
-    protected function createSuggestion($value)
+    protected function createSuggestion(string $value): string
     {
         // Strip the obsolete regex keys
         if (empty($this->obsolete_regex) === false) {
@@ -396,7 +364,7 @@ class MissingCommand extends AbstractCommand
      *
      * @return bool
      */
-    protected function neverObsolete($value)
+    protected function neverObsolete(string $value): bool
     {
         // Remove any keys that can never be obsolete
         foreach ($this->config('never_obsolete_keys', []) as $remove) {
@@ -419,7 +387,7 @@ class MissingCommand extends AbstractCommand
      *
      * @return array
      */
-    protected function getLemmasStructured(array $structured = [])
+    protected function getLemmasStructured(array $structured = []): array
     {
         foreach ($this->getLemmas() as $key => $value) {
             // Get the lemma family
@@ -438,8 +406,7 @@ class MissingCommand extends AbstractCommand
             // Sanity check
             if (strpos($key, '.') === false) {
                 $this->line('    <error>' . $key . '</error> in file <comment>' . $this->getShortPath($value) . '</comment> <error>will not be included because it has no parent</error>');
-            }
-            else {
+            } else {
                 Arr::set(
                     $structured, $this->encodeKey($key), $value
                 );
@@ -456,7 +423,7 @@ class MissingCommand extends AbstractCommand
      *
      * @return array
      */
-    protected function getLemmas(array $lemmas = [])
+    protected function getLemmas(array $lemmas = []): array
     {
         // Get folders
         $folders = $this->getPath($this->config('folders', []));
@@ -520,28 +487,28 @@ class MissingCommand extends AbstractCommand
      *
      * @return array
      */
-    protected function getOldLemmas($file_lang_path, array $values = [])
+    protected function getOldLemmas(string $file_lang_path, array $values = []): array
     {
-        if (!is_writable(dirname($file_lang_path))) {
+        if (! is_writable(dirname($file_lang_path))) {
             $this->error("    > Unable to write file in directory " . dirname($file_lang_path));
             die();
         }
 
-        if (!file_exists($file_lang_path)) {
+        if (! file_exists($file_lang_path)) {
             $this->info("    > File has been created");
         }
 
-        if (!touch($file_lang_path)) {
+        if (! touch($file_lang_path)) {
             $this->error("    > Unable to touch file {$file_lang_path}");
             die();
         }
 
-        if (!is_readable($file_lang_path)) {
+        if (! is_readable($file_lang_path)) {
             $this->error("    > Unable to read file {$file_lang_path}");
             die();
         }
 
-        if (!is_writable($file_lang_path)) {
+        if (! is_writable($file_lang_path)) {
             $this->error("    > Unable to write in file {$file_lang_path}");
             die();
         }
@@ -557,5 +524,100 @@ class MissingCommand extends AbstractCommand
         }
 
         return $values;
+    }
+
+    /**
+     * Return an absolute path without predefined variables
+     *
+     * @param array|string $subject
+     *
+     * @return string|array
+     */
+    protected function getPath($subject)
+    {
+        return str_replace(
+            [
+                '%APP',
+                '%BASE',
+                '%PUBLIC',
+                '%STORAGE',
+            ],
+            [
+                app_path(),
+                base_path(),
+                public_path(),
+                storage_path(),
+            ],
+            $subject
+        );
+    }
+
+    /**
+     * Extract all translations from the provided file
+     * Remove all translations containing :
+     * - $  -> auto-generated translation cannot be supported
+     * - :: -> package translations are not taken in account
+     *
+     * @param string $path
+     *
+     * @return array
+     */
+    protected function extractTranslationFromFile(string $path): array
+    {
+        $result = [];
+        $string = file_get_contents($path);
+
+        foreach (Arr::flatten($this->config('trans_methods', [])) as $method) {
+            preg_match_all($method, $string, $matches);
+
+            foreach ($matches[1] as $k => $v) {
+                if (strpos($v, '$') !== false) {
+                    unset($matches[1][$k]);
+                }
+                if (strpos($v, '::') !== false) {
+                    unset($matches[1][$k]);
+                }
+            }
+
+            $result = array_merge($result, array_flip($matches[1]));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Return an iterator of php files in the provided paths and sub-paths
+     *
+     * @param string $path
+     *
+     * @return mixed
+     */
+    protected function getPhpFiles(string $path)
+    {
+        if (is_dir($path)) {
+            return new RegexIterator(
+                new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
+                    RecursiveIteratorIterator::SELF_FIRST,
+                    RecursiveIteratorIterator::CATCH_GET_CHILD // Ignore "Permission denied"
+                ),
+                '/^.+\.php$/i',
+                RecursiveRegexIterator::GET_MATCH
+            );
+        } else {
+            return [];
+        }
+    }
+
+    /**
+     * Return an relative path to the laravel directory
+     *
+     * @param string $path
+     *
+     * @return string
+     */
+    protected function getShortPath(string $path): string
+    {
+        return str_replace(base_path(), '', $path);
     }
 }

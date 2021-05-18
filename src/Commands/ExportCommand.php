@@ -2,10 +2,12 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
-use Illuminate\Support\Arr;
+use Torann\LocalizationHelpers\ClientManager;
 
 class ExportCommand extends AbstractCommand
 {
+    protected ClientManager $client_manager;
+
     /**
      * The name and signature of the console command.
      *
@@ -14,9 +16,7 @@ class ExportCommand extends AbstractCommand
     protected $signature = 'localization:export
                                 {locale : The locale to be exported}
                                 {group : The group or comma separated groups}
-                                {--d|delimiter=, : The optional delimiter parameter sets the field delimiter.}
-                                {--c|enclosure=" : The optional enclosure parameter sets the field enclosure.}
-                                {--p|path= : Save the output to this path.}';
+                                {--client=local : Client to use for exporting}';
 
     /**
      * The console command description.
@@ -26,91 +26,35 @@ class ExportCommand extends AbstractCommand
     protected $description = "Exports the language files to CSV files";
 
     /**
-     * Export path.
-     *
-     * @var string
+     * @param ClientManager $client_manager
      */
-    protected $export_path;
-
-    /**
-     * Create a new command instance.
-     */
-    public function __construct()
+    public function __construct(ClientManager $client_manager)
     {
         parent::__construct();
 
-        $this->export_path = Arr::get($this->config, 'export_path');
+        $this->client_manager = $client_manager;
     }
 
     /**
      * Execute the console command.
      *
-     * @return void
+     * @return int
+     * @throws \Torann\LocalizationHelpers\Exceptions\ClientException
      */
     public function handle()
     {
-        // Set locale to use
-        $locale = $this->argument('locale');
+        $client = $this->client_manager->client(
+            $this->option('client')
+        );
 
-        // Set CSV options
-        $delimiter = $this->option('delimiter');
-        $enclosure = $this->option('enclosure');
+        $client->put(
+            $this->argument('locale'),
+            $this->getGroupArgument()
+        );
 
-        // Get path for the CSV.
-        $this->export_path = $this->option('path') ?: $this->export_path;
+        $this->displayMessages($client);
 
-        // Create storage dir
-        if (file_exists($this->export_path) == false) {
-            mkdir($this->export_path, 0755, true);
-        }
-
-        // Process all of the locales
-        foreach ($this->getGroupArgument() as $group) {
-            $this->createExport($locale, $group, $delimiter, $enclosure);
-        }
-    }
-
-    /*
-     * Create export file.
-     *
-     * @param string $locale
-     * @param string $group
-     * @param string $delimiter
-     * @param string $enclosure
-     */
-    protected function createExport($locale, $group, $delimiter = ',', $enclosure = '"')
-    {
-        $strings = $this->loadLangList($locale, $group);
-
-        // Can't write to file
-        if (!($out = fopen("{$this->export_path}/{$group}.csv", 'w'))) {
-            $this->error('Can\'t open the input file!');
-            exit;
-        }
-
-        // Write CSV file
-        foreach ($strings as $key => $value) {
-            fputcsv($out, [$key, $value], $delimiter, $enclosure);
-        }
-
-        fclose($out);
-
-        $this->line('');
-        $this->info("Successfully created export file:");
-        $this->info("{$this->export_path}/{$group}.csv");
-        $this->line('');
-    }
-
-    /*
-     * Get list of languages.
-     *
-     * @return array
-     */
-    protected function loadLangList($locale, $group)
-    {
-        $translations = app('translator')->getLoader()->load($locale, $group);
-
-        return Arr::dot([$group => $translations]);
+        return 0;
     }
 
     /**
@@ -118,7 +62,7 @@ class ExportCommand extends AbstractCommand
      *
      * @return array
      */
-    protected function getGroupArgument()
+    protected function getGroupArgument(): array
     {
         $groups = explode(',', preg_replace('/\s+/', '', $this->argument('group')));
 

@@ -2,11 +2,12 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
-use Exception;
-use Illuminate\Support\Arr;
+use Torann\LocalizationHelpers\ClientManager;
 
 class ImportCommand extends AbstractCommand
 {
+    protected ClientManager $client_manager;
+
     /**
      * The name and signature of the console command.
      *
@@ -15,10 +16,7 @@ class ImportCommand extends AbstractCommand
     protected $signature = 'localization:import
                                 {locale : The locale to be imported}
                                 {group : The group or comma separated groups}
-                                {--d|delimiter=, : The optional delimiter parameter sets the field delimiter.}
-                                {--c|enclosure=" : The optional enclosure parameter sets the field enclosure.}
-                                {--e|escape=\\ : The escape character (one character only). Defaults as a backslash.}
-                                {--p|path= : The CSV file path to be imported.}';
+                                {--client=local : Client to use for exporting}';
 
     /**
      * The console command description.
@@ -28,134 +26,35 @@ class ImportCommand extends AbstractCommand
     protected $description = "Exports the language files to CSV files";
 
     /**
-     * Import path.
-     *
-     * @var string
+     * @param ClientManager $client_manager
      */
-    protected $import_path;
-
-    /**
-     * Create a new command instance.
-     */
-    public function __construct()
+    public function __construct(ClientManager $client_manager)
     {
         parent::__construct();
 
-        $this->import_path = Arr::get($this->config, 'import_path');
+        $this->client_manager = $client_manager;
     }
 
     /**
      * Execute the console command.
      *
-     * @return void
+     * @return int
+     * @throws \Torann\LocalizationHelpers\Exceptions\ClientException
      */
     public function handle()
     {
-        // Set locale to use
-        $locale = $this->argument('locale');
+        $client = $this->client_manager->client(
+            $this->option('client')
+        );
 
-        // Set CSV options
-        $delimiter = $this->option('delimiter');
-        $enclosure = $this->option('enclosure');
-        $escape = $this->option('escape');
+        $client->get(
+            $this->argument('locale'),
+            $this->getGroupArgument()
+        );
 
-        // Get path for the CSV.
-        $this->import_path = $this->option('path') ?: $this->import_path;
+        $this->displayMessages($client);
 
-        // Process all of the locales
-        foreach ($this->getGroupArgument() as $group) {
-            $this->import($locale, $group, $delimiter, $enclosure, $escape);
-        }
-    }
-
-    /*
-     * Import CSV file.
-     *
-     * @param string $locale
-     * @param string $group
-     * @param string $delimiter
-     * @param string $enclosure
-     * @param string $escape
-     */
-    protected function import($locale, $group, $delimiter = ',', $enclosure = '"', $escape = '\\')
-    {
-        // Create output device and write CSV.
-        if (($input_fp = fopen("{$this->import_path}/{$group}.csv", 'r')) === false) {
-            $this->error('Can\'t open the input file!');
-            exit;
-        }
-
-        $strings = [];
-
-        // Write CSV lintes
-        while (($data = fgetcsv($input_fp, 0, $delimiter, $enclosure, $escape)) !== false) {
-            $strings[$data[0]] = $data[1];
-        }
-
-        fclose($input_fp);
-
-        $this->writeLangList($locale, $group, $strings);
-
-        $this->line('');
-        $this->info("Successfully imported file:");
-        $this->info("{$this->import_path}/{$group}.csv");
-        $this->line('');
-    }
-
-    /*
-     * Get list of languages
-     *
-     * @return array
-     * @throws \Exception
-     */
-    protected function writeLangList($locale, $group, $new_translations)
-    {
-        $translations = app('translator')->getLoader()->load($locale, $group);
-
-        // Process translations
-        foreach ($new_translations as $key => $value) {
-            Arr::set(
-                $translations,
-                $this->encodeKey($key),
-                $value
-            );
-        }
-
-        // Get the language file path
-        $language_file = $this->getLangPath() . "/{$locale}/{$group}.php";
-
-        // Sanity check for new language files
-        $this->ensureFileExists($language_file);
-
-        if (is_writable($language_file) && ($fp = fopen($language_file, 'w')) !== false) {
-            // Export values
-            $content = var_export($translations[$group], true);
-
-            // Decode all keys
-            $content = $this->decodeKey($content);
-
-            fputs($fp, $this->dumpLangArray("<?php\n\nreturn {$content};"));
-            fclose($fp);
-        }
-        else {
-            throw new Exception("Cannot open language file: {$language_file}");
-        }
-    }
-
-    /**
-     * Create the language file if one does not exist.
-     *
-     * @param string $path
-     */
-    protected function ensureFileExists($path)
-    {
-        if (file_exists($path) === false) {
-            // Create directory
-            @mkdir(dirname($path), 0777, true);
-
-            // Make the language file
-            touch($path);
-        }
+        return 0;
     }
 
     /**
@@ -163,7 +62,7 @@ class ImportCommand extends AbstractCommand
      *
      * @return array
      */
-    protected function getGroupArgument()
+    protected function getGroupArgument(): array
     {
         $groups = explode(',', preg_replace('/\s+/', '', $this->argument('group')));
 

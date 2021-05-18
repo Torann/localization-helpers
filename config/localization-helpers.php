@@ -166,4 +166,52 @@ return [
     */
 
     'array_shorthand' => true,
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Client
+    |--------------------------------------------------------------------------
+    |
+    | Here you may specify the default client that should be used by when
+    | managing translations remoting. The "local" client, is just a simple
+    | export and import client.
+    |
+    */
+
+    'default_client' => 'local',
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Clients
+    |--------------------------------------------------------------------------
+    |
+    | Here you may configure as many clients as you wish, and you may even
+    | configure multiple clients of the same driver. Defaults have been setup
+    | for each driver as an example of the required options.
+    |
+    */
+
+    'clients' => [
+
+        'local' => [
+            'driver' => 'local',
+            'delimiter' => ',',
+            'enclosure' => '"',
+            'escape' => '\\',
+            'import_path' => storage_path('localization/import'),
+            'export_path' => storage_path('localization/export'),
+        ],
+
+        'one_sky' => [
+            'driver' => 'onesky',
+            'base_locale' => 'en',
+            'file_format' => 'PHP_SHORT_ARRAY',
+            'default_project_id' => null,
+            'api_key' => env('ONESKY_API_KEY'),
+            'secret' => env('ONESKY_SECRET'),
+        ],
+
+    ],
 ];
