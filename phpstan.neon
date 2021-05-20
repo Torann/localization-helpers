@@ -5,5 +5,8 @@ parameters:
     ignoreErrors:
         - '#Function config not found#'
         - '#Function config_path not found#'
+        - '#Property Torann\\LocalizationHelpers\\Drivers\\OneSky::\$one_sky_client has unknown class Onesky\\Api\\Client as its type#'
+        - '#Return typehint of method Torann\\LocalizationHelpers\\Drivers\\OneSky::getOneSkyClient\(\) has invalid type Onesky\\Api\\Client#'
+        - '#Instantiated class Onesky\\Api\\Client not found#'
         - '#Function (app|base|public|storage)_path not found#'
         - '#Function app not found#'
