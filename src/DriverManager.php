@@ -6,15 +6,12 @@ use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
-use Torann\LocalizationHelpers\Contracts\Client;
+use Torann\LocalizationHelpers\Contracts\Driver;
 
-/**
- * @mixin Client
- */
-class ClientManager
+class DriverManager
 {
-    protected array $custom_clients = [];
-    protected array $clients = [];
+    protected array $custom_drivers = [];
+    protected array $drivers = [];
     protected array $config = [];
 
     /**
@@ -34,13 +31,13 @@ class ClientManager
      *
      * @param string|null $name
      *
-     * @return Client
+     * @return Driver
      */
-    public function client(string $name = null): Client
+    public function driver(string $name = null): Driver
     {
-        $name = $name ?: $this->getDefaultClient();
+        $name = $name ?: $this->getDefaultDriver();
 
-        return $this->clients[$name] = $this->get($name);
+        return $this->drivers[$name] = $this->get($name);
     }
 
     /**
@@ -48,11 +45,11 @@ class ClientManager
      *
      * @param string $name
      *
-     * @return Client
+     * @return Driver
      */
-    protected function get(string $name): Client
+    protected function get(string $name): Driver
     {
-        return $this->clients[$name] ?? $this->resolve($name);
+        return $this->drivers[$name] ?? $this->resolve($name);
     }
 
     /**
@@ -60,7 +57,7 @@ class ClientManager
      *
      * @param string $name
      *
-     * @return Client
+     * @return Driver
      *
      * @throws InvalidArgumentException
      */
@@ -70,23 +67,23 @@ class ClientManager
 
         if (empty($config['driver'])) {
             throw new InvalidArgumentException(
-                "Client [{$name}] does not have a configuration."
+                "Driver [{$name}] does not have a configuration."
             );
         }
 
         $name = $config['driver'];
 
-        if (isset($this->custom_clients[$name])) {
-            return $this->custom_clients[$config['driver']]($config);
+        if (isset($this->custom_drivers[$name])) {
+            return $this->custom_drivers[$name]($config);
         }
 
-        $client_class = 'Torann\\LocalizationHelpers\\Clients\\' . Str::studly($name);
+        $driver_class = 'Torann\\LocalizationHelpers\\Drivers\\' . Str::studly($name);
 
-        if (class_exists($client_class) === false) {
+        if (class_exists($driver_class) === false) {
             throw new InvalidArgumentException("Driver [{$name}] is not supported.");
         }
 
-        return new $client_class($config);
+        return new $driver_class($config);
     }
 
     /**
@@ -99,13 +96,13 @@ class ClientManager
      */
     public function set(string $name, string $disk): self
     {
-        $this->clients[$name] = $disk;
+        $this->drivers[$name] = $disk;
 
         return $this;
     }
 
     /**
-     * Get the client configuration.
+     * Get the driver configuration.
      *
      * @param string $name
      *
@@ -113,30 +110,30 @@ class ClientManager
      */
     protected function getConfig(string $name): array
     {
-        return Arr::get($this->config, "clients.{$name}", []);
+        return Arr::get($this->config, "drivers.{$name}", []);
     }
 
     /**
-     * Get the default client name.
+     * Get the default driver name.
      *
      * @return string
      */
-    public function getDefaultClient(): string
+    public function getDefaultDriver(): string
     {
-        return $this->config['default_client'] ?? '';
+        return $this->config['default_driver'] ?? '';
     }
 
     /**
      * Unset the given disk instances.
      *
-     * @param array|string $client
+     * @param array|string $driver
      *
      * @return self
      */
-    public function forgetClient($client): self
+    public function forgetDriver($driver): self
     {
-        foreach ((array) $client as $name) {
-            unset($this->clients[$name]);
+        foreach ((array) $driver as $name) {
+            unset($this->drivers[$name]);
         }
 
         return $this;
@@ -151,36 +148,23 @@ class ClientManager
      */
     public function purge(string $name = null)
     {
-        $this->forgetClient(
-            $name ?? $this->getDefaultClient()
+        $this->forgetDriver(
+            $name ?? $this->getDefaultDriver()
         );
     }
 
     /**
-     * Register a custom client Closure.
+     * Register a custom driver Closure.
      *
-     * @param string   $client
+     * @param string   $driver
      * @param Closure $callback
      *
      * @return self
      */
-    public function extend(string $client, Closure $callback): self
+    public function extend(string $driver, Closure $callback): self
     {
-        $this->custom_clients[$client] = $callback;
+        $this->custom_drivers[$driver] = $callback;
 
         return $this;
-    }
-
-    /**
-     * Dynamically call the default driver instance.
-     *
-     * @param string $method
-     * @param array  $parameters
-     *
-     * @return mixed
-     */
-    public function __call($method, $parameters)
-    {
-        return $this->client()->$method(...$parameters);
     }
 }

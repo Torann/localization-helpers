@@ -2,7 +2,7 @@
 
 namespace Torann\LocalizationHelpers\Contracts;
 
-interface Client
+interface Driver
 {
     /**
      * Add an error message.
@@ -58,7 +58,7 @@ interface Client
      * @param array  $groups
      *
      * @return bool
-     * @throws \Torann\LocalizationHelpers\Exceptions\ClientException
+     * @throws \Torann\LocalizationHelpers\Exceptions\DriverException
      */
     public function put(string $locale, array $groups): bool;
 
@@ -67,7 +67,7 @@ interface Client
      * @param array  $groups
      *
      * @return string
-     * @throws \Torann\LocalizationHelpers\Exceptions\ClientException
+     * @throws \Torann\LocalizationHelpers\Exceptions\DriverException
      */
     public function get(string $locale, array $groups);
 }

@@ -1,15 +1,17 @@
 <?php
 
-namespace Torann\LocalizationHelpers\Clients;
+namespace Torann\LocalizationHelpers\Drivers;
 
 use Generator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\MessageBag;
-use Torann\LocalizationHelpers\Contracts\Client;
-use Torann\LocalizationHelpers\Exceptions\ClientException;
+use Torann\LocalizationHelpers\Contracts\Driver;
+use Torann\LocalizationHelpers\Concerns\ManageTranslationFiles;
 
-abstract class AbstractClient implements Client
+abstract class AbstractDriver implements Driver
 {
+    use ManageTranslationFiles;
+
     protected array $config;
     protected MessageBag $messages;
 

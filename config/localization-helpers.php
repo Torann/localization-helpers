@@ -121,19 +121,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Import/Export File Path
-    |--------------------------------------------------------------------------
-    |
-    | Set this to the location of the import and export CSV files.
-    |
-    */
-
-    'import_path' => storage_path('localization/import'),
-
-    'export_path' => storage_path('localization/export'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Only Process the System Locale
     |--------------------------------------------------------------------------
     |
@@ -170,47 +157,63 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Client
+    | Default Driver
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default client that should be used by when
-    | managing translations remoting. The "local" client, is just a simple
-    | export and import client.
+    | Here you may specify the default driver that should be used by when
+    | managing translations remoting. The "local" driver, is just a simple
+    | export and import driver.
     |
     */
 
-    'default_client' => 'local',
+    'default_driver' => 'json',
 
 
     /*
     |--------------------------------------------------------------------------
-    | Clients
+    | Driver
     |--------------------------------------------------------------------------
     |
-    | Here you may configure as many clients as you wish, and you may even
-    | configure multiple clients of the same driver. Defaults have been setup
+    | Here you may configure as many drivers as you wish, and you may even
+    | configure multiple drivers of the same driver. Defaults have been setup
     | for each driver as an example of the required options.
+    |
+    | Locales array: are used to map local locales to remote locales ('en' => 'en-US')
     |
     */
 
-    'clients' => [
+    'drivers' => [
 
-        'local' => [
+        'csv' => [
             'driver' => 'local',
-            'delimiter' => ',',
-            'enclosure' => '"',
-            'escape' => '\\',
             'import_path' => storage_path('localization/import'),
             'export_path' => storage_path('localization/export'),
+            'format' => 'csv',
+            'options' => [
+                'delimiter' => ',',
+                'enclosure' => '"',
+                'escape' => '\\',
+            ],
+        ],
+
+        'json' => [
+            'driver' => 'local',
+            'import_path' => storage_path('localization/import'),
+            'export_path' => storage_path('localization/export'),
+            'format' => 'json',
+            'options' => [
+                'flags' => JSON_PRETTY_PRINT,
+            ],
         ],
 
         'one_sky' => [
             'driver' => 'onesky',
-            'base_locale' => 'en',
-            'file_format' => 'PHP_SHORT_ARRAY',
-            'default_project_id' => null,
+            'project_id' => env('ONESKY_PROJECT_ID'),
             'api_key' => env('ONESKY_API_KEY'),
             'secret' => env('ONESKY_SECRET'),
+            'locales' => [
+                'en' => 'en-US',
+            ],
         ],
 
     ],
