@@ -2,7 +2,7 @@
 
 namespace Torann\LocalizationHelpers\Exceptions;
 
-class ClientException extends \Exception
+class DriverException extends \Exception
 {
     //
 }

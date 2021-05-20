@@ -3,8 +3,10 @@
 namespace Torann\LocalizationHelpers\Concerns;
 
 use Exception;
+use Illuminate\Support\Arr;
+use Torann\LocalizationHelpers\Exceptions\DriverException;
 
-trait MangeFiles
+trait ManageTranslationFiles
 {
     /**
      * Encode the key so that the array set function doesn't
@@ -100,8 +102,65 @@ trait MangeFiles
         $code = preg_replace('/^  |\G  /m', '    ', $code);
 
         // Fix weird new line breaks at the beginning of arrays
-        $code = preg_replace('/=\>\s\n\s{4,}\[/m', '=> [', $code);
+        return preg_replace('/=\>\s\n\s{4,}\[/m', '=> [', $code);
+    }
 
-        return $code;
+    /**
+     * Save translations to translation group file.
+     *
+     * @param string $locale
+     * @param string $group
+     * @param array  $new_translations
+     *
+     * @return void
+     * @throws Exception
+     */
+    protected function saveLangGroup(string $locale, string $group, array $new_translations)
+    {
+        $translations = app('translator')->getLoader()->load($locale, $group);
+
+        // Process translations
+        foreach ($new_translations as $key => $value) {
+            Arr::set(
+                $translations,
+                $this->encodeKey($key),
+                $value
+            );
+        }
+
+        // Get the language file path
+        $language_file = $this->getLangPath("{$locale}/{$group}.php");
+
+        // Sanity check for new language files
+        $this->ensureFileExists($language_file);
+
+        if (is_writable($language_file) && ($fp = fopen($language_file, 'w')) !== false) {
+            $content = $this->decodeKey(
+                var_export($translations[$group], true)
+            );
+
+            fputs($fp, $this->dumpLangArray("<?php\n\nreturn {$content};"));
+            fclose($fp);
+        } else {
+            throw new Exception(
+                "Cannot open language file: {$language_file}"
+            );
+        }
+    }
+
+    /**
+     * Create the language file if one does not exist.
+     *
+     * @param string $path
+     */
+    protected function ensureFileExists(string $path)
+    {
+        if (is_file($path) === false) {
+            // Create directory
+            @mkdir(dirname($path), 0777, true);
+
+            // Make the language file
+            touch($path);
+        }
     }
 }

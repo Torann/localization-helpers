@@ -4,7 +4,7 @@ namespace Torann\LocalizationHelpers\Commands;
 
 use Illuminate\Support\Arr;
 use Illuminate\Console\Command;
-use Torann\LocalizationHelpers\Contracts\Client;
+use Torann\LocalizationHelpers\Contracts\Driver;
 
 abstract class AbstractCommand extends Command
 {
@@ -24,18 +24,18 @@ abstract class AbstractCommand extends Command
     }
 
     /**
-     * Display messages from the client in the console
+     * Display messages from the driver in the console
      *
-     * @param Client          $client
+     * @param Driver          $driver
      * @param string|null     $style
      * @param null|int|string $verbosity
      *
      * @return  void
      */
-    public function displayMessages(Client $client, string $style = null, $verbosity = null)
+    public function displayMessages(Driver $driver, string $style = null, $verbosity = null)
     {
         if ($this->display) {
-            foreach ($client->getMessages('*') as $type => $messages) {
+            foreach ($driver->getMessages('*') as $type => $messages) {
                 foreach ($messages as $message) {
                     switch ($type) {
                         case 'error':

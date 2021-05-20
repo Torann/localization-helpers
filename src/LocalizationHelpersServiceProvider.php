@@ -52,8 +52,8 @@ class LocalizationHelpersServiceProvider extends ServiceProvider
      */
     protected function registerManager()
     {
-        $this->app->singleton(ClientManager::class, function ($app) {
-            return new ClientManager((array) $app['config']['localization-helpers']);
+        $this->app->singleton(DriverManager::class, function ($app) {
+            return new DriverManager((array) $app['config']['localization-helpers']);
         });
     }
 

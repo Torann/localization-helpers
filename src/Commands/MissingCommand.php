@@ -8,11 +8,11 @@ use Illuminate\Support\Arr;
 use RecursiveRegexIterator;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
-use Torann\LocalizationHelpers\Concerns\MangeFiles;
+use Torann\LocalizationHelpers\Concerns\ManageTranslationFiles;
 
 class MissingCommand extends AbstractCommand
 {
-    use MangeFiles;
+    use ManageTranslationFiles;
 
     protected array $final_lemmas = [];
     protected string $obsolete_regex;

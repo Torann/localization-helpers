@@ -2,11 +2,11 @@
 
 namespace Torann\LocalizationHelpers\Commands;
 
-use Torann\LocalizationHelpers\ClientManager;
+use Torann\LocalizationHelpers\Concerns\LocaleInput;
 
 class ExportCommand extends AbstractCommand
 {
-    protected ClientManager $client_manager;
+    use LocaleInput;
 
     /**
      * The name and signature of the console command.
@@ -14,60 +14,34 @@ class ExportCommand extends AbstractCommand
      * @var string
      */
     protected $signature = 'localization:export
-                                {locale : The locale to be exported}
+                                {locale : The application locale to be exported}
                                 {group : The group or comma separated groups}
-                                {--client=local : Client to use for exporting}';
+                                {--driver= : Driver to use for exporting}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = "Exports the language files to CSV files";
-
-    /**
-     * @param ClientManager $client_manager
-     */
-    public function __construct(ClientManager $client_manager)
-    {
-        parent::__construct();
-
-        $this->client_manager = $client_manager;
-    }
+    protected $description = "Exports the language groups";
 
     /**
      * Execute the console command.
      *
      * @return int
-     * @throws \Torann\LocalizationHelpers\Exceptions\ClientException
+     * @throws \Torann\LocalizationHelpers\Exceptions\DriverException
      */
     public function handle()
     {
-        $client = $this->client_manager->client(
-            $this->option('client')
-        );
+        $driver = $this->resolveDriver();
 
-        $client->put(
+        $driver->put(
             $this->argument('locale'),
             $this->getGroupArgument()
         );
 
-        $this->displayMessages($client);
+        $this->displayMessages($driver);
 
         return 0;
-    }
-
-    /**
-     * Get group argument.
-     *
-     * @return array
-     */
-    protected function getGroupArgument(): array
-    {
-        $groups = explode(',', preg_replace('/\s+/', '', $this->argument('group')));
-
-        return array_map(function ($group) {
-            return preg_replace('/\\.[^.\\s]{3,4}$/', '', $group);
-        }, $groups);
     }
 }
