@@ -207,7 +207,7 @@ return [
         ],
 
         'one_sky' => [
-            'driver' => 'onesky',
+            'driver' => 'one_sky',
             'project_id' => env('ONESKY_PROJECT_ID'),
             'api_key' => env('ONESKY_API_KEY'),
             'secret' => env('ONESKY_SECRET'),
