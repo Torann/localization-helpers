@@ -567,6 +567,8 @@ class MissingCommand extends AbstractCommand
         $result = [];
         $string = file_get_contents($path);
 
+        $ignore_values = $this->config('ignore_values', []);
+
         foreach (Arr::flatten($this->config('trans_methods', [])) as $method) {
             preg_match_all($method, $string, $matches);
 
@@ -576,6 +578,12 @@ class MissingCommand extends AbstractCommand
                 }
                 if (strpos($v, '::') !== false) {
                     unset($matches[1][$k]);
+                }
+
+                foreach ($ignore_values as $ignore_value) {
+                    if (strpos($v, $ignore_value) !== false) {
+                        unset($matches[1][$k]);
+                    }
                 }
             }
 
