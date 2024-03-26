@@ -27,7 +27,6 @@ class MissingCommand extends AbstractCommand
      */
     protected $signature = 'localization:missing
                                 {--f|force : Force file rewrite even if there is nothing to do}
-                                {--l|new-value=%LEMMA : Value of new found lemmas (use %LEMMA for the lemma value)}
                                 {--d|dirty : Only return the exit code (use $? in shell to know whether there are missing lemma)}';
 
     /**
@@ -66,7 +65,7 @@ class MissingCommand extends AbstractCommand
                 // Set path to family file
                 $file_lang_path = "{$lang_path}/{$family}.php";
 
-                $this->line('    ' . $this->getShortPath($file_lang_path));
+                $this->line(sprintf('    %s', $this->getShortPath($file_lang_path)));
 
                 // Get existing and new lemmas
                 $old_lemmas = $this->getOldLemmas($file_lang_path);
@@ -147,7 +146,9 @@ class MissingCommand extends AbstractCommand
 
                 foreach ($this->jobs as $file_lang_path => $file_content) {
                     file_put_contents($file_lang_path, $file_content);
-                    $this->line("    <info>" . $this->getShortPath($file_lang_path));
+                    $this->line(
+                        sprintf('    <info>%s</info>', $this->getShortPath($file_lang_path))
+                    );
                 }
 
                 $this->line('');
@@ -190,10 +191,7 @@ class MissingCommand extends AbstractCommand
 
                 // Remove any keys that can never be obsolete
                 if ($this->neverObsolete($id)) {
-                    Arr::set(
-                        $this->final_lemmas,
-                        $key, str_replace('%LEMMA', $value, $this->option('new-value'))
-                    );
+                    Arr::set($this->final_lemmas, $key, $value);
 
                     unset($lemmas[$key]);
                 }
@@ -204,11 +202,15 @@ class MissingCommand extends AbstractCommand
         if (count($lemmas) > 0) {
             $this->is_dirty = true;
 
-            $this->comment("    " . count($lemmas) . " obsolete strings (will be deleted)");
+            $this->comment(
+                sprintf("    %d obsolete strings (will be deleted)", count($lemmas))
+            );
 
             if ($this->option('verbose')) {
                 foreach ($lemmas as $key => $value) {
-                    $this->line("            <comment>" . $this->decodeKey($key) . "</comment>");
+                    $this->line(
+                        sprintf('            <comment>%s</comment>', $this->decodeKey($key))
+                    );
                 }
             }
         }
@@ -230,17 +232,16 @@ class MissingCommand extends AbstractCommand
         $lemmas = array_intersect_key($old_lemmas, $new_lemmas);
 
         if (count($lemmas) > 0) {
-            // Sort lemmas by key
             ksort($lemmas);
 
             if ($this->option('verbose')) {
-                $this->line("            " . count($lemmas) . " already translated strings");
+                $this->line(
+                    sprintf('            %d already translated strings', count($lemmas))
+                );
             }
 
             foreach ($lemmas as $key => $value) {
-                Arr::set(
-                    $this->final_lemmas, $key, $value
-                );
+                Arr::set($this->final_lemmas, $key, $value);
             }
 
             return true;
@@ -267,7 +268,10 @@ class MissingCommand extends AbstractCommand
         if ($this->config('ask_for_value') === false) {
             $lemmas = array_filter($lemmas, function ($key) {
                 if ($this->neverObsolete($key)) {
-                    $this->line("        <comment>Manually add:</comment> <info>{$key}</info>");
+                    $this->line(
+                        sprintf('        <comment>Manually add:</comment> <info>%s</info>', $key)
+                    );
+
                     $this->has_new = true;
 
                     return false;
@@ -285,7 +289,9 @@ class MissingCommand extends AbstractCommand
             // Sort lemmas by key
             ksort($lemmas);
 
-            $this->info("    " . count($lemmas) . " new strings to translate");
+            $this->info(
+                sprintf('    %d new strings to translate', count($lemmas))
+            );
 
             foreach ($lemmas as $key => $path) {
                 $value = $this->decodeKey($key);
@@ -298,13 +304,12 @@ class MissingCommand extends AbstractCommand
                 }
 
                 if ($this->option('verbose')) {
-                    $this->line("        <info>{$key}</info> in " . $this->getShortPath($path));
+                    $this->line(
+                        sprintf('        <info>%s</info> in %s', $key, $this->getShortPath($path))
+                    );
                 }
 
-                Arr::set(
-                    $this->final_lemmas,
-                    $key, str_replace('%LEMMA', $value, $this->option('new-value'))
-                );
+                Arr::set($this->final_lemmas, $key, $value);
             }
 
             return true;
@@ -322,7 +327,6 @@ class MissingCommand extends AbstractCommand
      */
     protected function getLanguages(array $paths = []): array
     {
-        // Get language path
         $dir_lang = $this->getLangPath();
 
         // Only use the default locale
@@ -405,11 +409,11 @@ class MissingCommand extends AbstractCommand
 
             // Sanity check
             if (strpos($key, '.') === false) {
-                $this->line('    <error>' . $key . '</error> in file <comment>' . $this->getShortPath($value) . '</comment> <error>will not be included because it has no parent</error>');
-            } else {
-                Arr::set(
-                    $structured, $this->encodeKey($key), $value
+                $this->line(
+                    sprintf('    <error>%s</error> in file <comment>%s</comment> <error>will not be included because it has no parent</error>', $key, $this->getShortPath($value))
                 );
+            } else {
+                Arr::set($structured, $this->encodeKey($key), $value);
             }
         }
 
@@ -425,20 +429,24 @@ class MissingCommand extends AbstractCommand
      */
     protected function getLemmas(array $lemmas = []): array
     {
-        // Get folders
         $folders = $this->getPath($this->config('folders', []));
 
         foreach ($folders as $path) {
             if ($this->option('verbose')) {
-                $this->line('    <info>' . $path . '</info>');
+                $this->line("    <info>{$path}</info>");
             }
 
-            foreach ($this->getPhpFiles($path) as $php_file_path => $dumb) {
+            foreach ($this->getSouceFiles($path) as $file_path => $dumb) {
                 $lemma = [];
 
-                foreach ($this->extractTranslationFromFile($php_file_path) as $k => $v) {
-                    $real_value = eval("return $k;");
-                    $lemma[$real_value] = $php_file_path;
+                foreach ($this->extractTranslationFromFile($file_path) as $k => $v) {
+                    if ($this->option('verbose')) {
+                        $this->line("    <info> - {$k}</info>");
+                    }
+
+                    $real_value = eval("return {$k};");
+
+                    $lemma[$real_value] = $file_path;
                 }
 
                 $lemmas = array_merge($lemmas, $lemma);
@@ -446,15 +454,15 @@ class MissingCommand extends AbstractCommand
         }
 
         if (count($lemmas) === 0) {
-            $this->comment("No lemma have been found in the code.");
-            $this->line("In these directories:");
+            $this->comment('No lemma have been found in the code.');
+            $this->line('In these directories:');
 
             foreach ($this->config('folders', []) as $path) {
                 $path = $this->getPath($path);
                 $this->line("    {$path}");
             }
 
-            $this->line("For these functions/methods:");
+            $this->line('For these functions/methods:');
 
             foreach ($this->config('trans_methods', []) as $k => $v) {
                 $this->line("    {$k}");
@@ -463,15 +471,16 @@ class MissingCommand extends AbstractCommand
             die();
         }
 
-        $this->line((count($lemmas) > 1) ? count($lemmas)
-            . " lemmas have been found in the code"
-            : "1 lemma has been found in the code");
+        $this->line(
+            sprintf('%d lemma(s) has been found in the code', count($lemmas))
+        );
 
         if ($this->option('verbose')) {
             foreach ($lemmas as $key => $value) {
                 if (strpos($key, '.') !== false) {
-                    $this->line('    <info>' . $key . '</info> in file <comment>'
-                        . $this->getShortPath($value) . '</comment>');
+                    $this->line(
+                        sprintf('    <info>%s</info> in file <comment>%s</comment>', $key, $this->getShortPath($value))
+                    );
                 }
             }
         }
@@ -489,27 +498,35 @@ class MissingCommand extends AbstractCommand
      */
     protected function getOldLemmas(string $file_lang_path, array $values = []): array
     {
-        if (! is_writable(dirname($file_lang_path))) {
-            $this->error("    > Unable to write file in directory " . dirname($file_lang_path));
+        if (is_writable(dirname($file_lang_path)) === false) {
+            $this->error(
+                sprintf('    > Unable to write file in directory %s', dirname($file_lang_path))
+            );
+
             die();
         }
 
-        if (! file_exists($file_lang_path)) {
-            $this->info("    > File has been created");
-        }
+        if (touch($file_lang_path) === false) {
+            $this->error(
+                sprintf('    > Unable to touch file %s', $file_lang_path)
+            );
 
-        if (! touch($file_lang_path)) {
-            $this->error("    > Unable to touch file {$file_lang_path}");
             die();
         }
 
-        if (! is_readable($file_lang_path)) {
-            $this->error("    > Unable to read file {$file_lang_path}");
+        if (is_readable($file_lang_path) === false) {
+            $this->error(
+                sprintf('    > Unable to read file %s', $file_lang_path)
+            );
+
             die();
         }
 
         if (! is_writable($file_lang_path)) {
-            $this->error("    > Unable to write in file {$file_lang_path}");
+            $this->error(
+                sprintf('    > Unable to write in file %s', $file_lang_path)
+            );
+
             die();
         }
 
@@ -554,9 +571,10 @@ class MissingCommand extends AbstractCommand
 
     /**
      * Extract all translations from the provided file
+     *
      * Remove all translations containing :
-     * - $  -> auto-generated translation cannot be supported
-     * - :: -> package translations are not taken in account
+     *      - $  -> auto-generated translation cannot be supported
+     *      - :: -> package translations are not taken in account
      *
      * @param string $path
      *
@@ -594,22 +612,24 @@ class MissingCommand extends AbstractCommand
     }
 
     /**
-     * Return an iterator of php files in the provided paths and sub-paths
+     * Return an iterator of files in the provided paths and sub-paths
      *
      * @param string $path
      *
      * @return mixed
      */
-    protected function getPhpFiles(string $path)
+    protected function getSouceFiles(string $path)
     {
         if (is_dir($path)) {
+            $extension = $this->config('extension', 'php');
+
             return new RegexIterator(
                 new RecursiveIteratorIterator(
                     new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
                     RecursiveIteratorIterator::SELF_FIRST,
                     RecursiveIteratorIterator::CATCH_GET_CHILD // Ignore "Permission denied"
                 ),
-                '/^.+\.php$/i',
+                "/^.+\.({$extension})$/i",
                 RecursiveRegexIterator::GET_MATCH
             );
         } else {
