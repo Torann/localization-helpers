@@ -24,6 +24,8 @@ return [
         '%APP/Http/Controllers',
     ],
 
+    'extension' => 'php',
+
     /*
     |--------------------------------------------------------------------------
     | Lang file to ignore
