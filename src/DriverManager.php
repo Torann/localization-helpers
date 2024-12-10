@@ -33,7 +33,7 @@ class DriverManager
      *
      * @return Driver
      */
-    public function driver(string $name = null): Driver
+    public function driver(string|null $name = null): Driver
     {
         $name = $name ?: $this->getDefaultDriver();
 
@@ -146,7 +146,7 @@ class DriverManager
      *
      * @return void
      */
-    public function purge(string $name = null)
+    public function purge(string|null $name = null)
     {
         $this->forgetDriver(
             $name ?? $this->getDefaultDriver()

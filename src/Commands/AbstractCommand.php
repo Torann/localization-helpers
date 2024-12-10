@@ -12,9 +12,6 @@ abstract class AbstractCommand extends Command
     protected bool $display = true;
     protected array $config = [];
 
-    /**
-     * Create a new command instance.
-     */
     public function __construct()
     {
         $this->config = (array) config('localization-helpers', []);
@@ -26,13 +23,13 @@ abstract class AbstractCommand extends Command
     /**
      * Display messages from the driver in the console
      *
-     * @param Driver          $driver
-     * @param string|null     $style
-     * @param null|int|string $verbosity
+     * @param Driver      $driver
+     * @param string|null $style
+     * @param mixed       $verbosity
      *
-     * @return  void
+     * @return void
      */
-    public function displayMessages(Driver $driver, string $style = null, $verbosity = null)
+    public function displayMessages(Driver $driver, string|null $style = null, mixed $verbosity = null): void
     {
         if ($this->display) {
             foreach ($driver->getMessages('*') as $type => $messages) {
@@ -51,13 +48,7 @@ abstract class AbstractCommand extends Command
     }
 
     /**
-     * Display console message
-     *
-     * @param string          $string
-     * @param string          $style
-     * @param null|int|string $verbosity
-     *
-     * @return  void
+     * {@inheritDoc}
      */
     public function line($string, $style = null, $verbosity = null)
     {
@@ -67,12 +58,7 @@ abstract class AbstractCommand extends Command
     }
 
     /**
-     * Display console message
-     *
-     * @param string          $string
-     * @param null|int|string $verbosity
-     *
-     * @return  void
+     * {@inheritDoc}
      */
     public function info($string, $verbosity = null)
     {
@@ -82,12 +68,7 @@ abstract class AbstractCommand extends Command
     }
 
     /**
-     * Display console message
-     *
-     * @param string          $string
-     * @param null|int|string $verbosity
-     *
-     * @return  void
+     * {@inheritDoc}
      */
     public function comment($string, $verbosity = null)
     {
@@ -97,12 +78,7 @@ abstract class AbstractCommand extends Command
     }
 
     /**
-     * Display console message
-     *
-     * @param string          $string
-     * @param null|int|string $verbosity
-     *
-     * @return  void
+     * {@inheritDoc}
      */
     public function question($string, $verbosity = null)
     {
@@ -112,12 +88,7 @@ abstract class AbstractCommand extends Command
     }
 
     /**
-     * Display console message
-     *
-     * @param string          $string
-     * @param null|int|string $verbosity
-     *
-     * @return void
+     * {@inheritDoc}
      */
     public function error($string, $verbosity = null)
     {
@@ -134,7 +105,7 @@ abstract class AbstractCommand extends Command
      *
      * @return mixed
      */
-    public function config(string $key, $default = null)
+    public function config(string $key, mixed $default = null): mixed
     {
         return Arr::get($this->config, $key, $default);
     }

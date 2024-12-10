@@ -112,7 +112,7 @@ abstract class AbstractDriver implements Driver
      *
      * @return mixed
      */
-    public function config(string $key, $default = null)
+    public function config(string $key, mixed $default = null): mixed
     {
         return Arr::get($this->config, $key, $default);
     }

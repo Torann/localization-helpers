@@ -8,7 +8,7 @@ use Torann\LocalizationHelpers\Exceptions\DriverException;
 
 class OneSky extends AbstractDriver
 {
-    protected ?OneSkyClient $one_sky_client = null;
+    protected OneSkyClient|null $one_sky_client = null;
 
     /**
      * {@inheritDoc}

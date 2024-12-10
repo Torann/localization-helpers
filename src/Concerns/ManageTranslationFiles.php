@@ -43,7 +43,7 @@ trait ManageTranslationFiles
      * @return string
      * @throws Exception
      */
-    protected function getLangPath(string $path = null): string
+    protected function getLangPath(string|null $path = null): string
     {
         $lang_folder_path = config('localization-helpers.lang_folder_path') ?: base_path('resources/lang');
 
